@@ -59,15 +59,9 @@ UserSchema.methods.generateRefreshToken = function () {
 
 UserSchema.methods.generateResetPasswordToken = function () {
   return jwt.sign(
-    {
-      id: this._id,
-      userId: this.userId,
-      phoneNumber: this.phoneNumber
-    },
+    { id: this._id, userId: this.userId, phoneNumber: this.phoneNumber },
     process.env.RESET_PASSWORD_TOKEN_SECRET,
-    {
-      expiresIn: '2m' 
-    }
+    { expiresIn: '2m' }
   );
 };
 

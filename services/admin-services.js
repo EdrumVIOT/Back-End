@@ -5,6 +5,8 @@ const ProductPayment = require('../models/product-payment-model');
 const HttpError = require('../middleware/http-error');
 const { verifyToken } = require('../utils/verifyToken'); 
 
+
+//////////////////// Admin Login ////////////////////
 const adminLogin = async ({ phoneNumber, password }) => {
   if (!phoneNumber) throw new HttpError('Phone number is required.', 400);
   if (!password) throw new HttpError('Password is required.', 400);
@@ -27,6 +29,8 @@ const adminLogin = async ({ phoneNumber, password }) => {
   };
 };
 
+
+//////////////////// Create User  ////////////////////
 const createUser = async (accessToken, userData) => {
   const decoded = verifyToken(accessToken);
   if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
@@ -43,10 +47,19 @@ const createUser = async (accessToken, userData) => {
   return { message: 'User created', user: newUser };
 };
 
+
+//////////////////// Admin Dashboard ////////////////////
 const getAdminDashboardStats = async (accessToken) => {
   const response = { status: 'success', data: {}, timestamp: new Date().toISOString() };
   const decoded = verifyToken(accessToken);
-  if (decoded.role !== 'admin') return { status: 'error', error: 'Admin access required' };
+
+  if (decoded.error) {
+    return { status: 'error', error: decoded.error };
+  }
+
+  if (decoded.role !== 'admin') {
+    return { status: 'error', error: 'Admin access required' };
+  }
 
   try {
     const [totalUsers, totalCourses, totalProducts, teachers, courses, paidPayments] = await Promise.all([
@@ -55,28 +68,36 @@ const getAdminDashboardStats = async (accessToken) => {
       Product.countDocuments(),
       User.find({ role: 'teacher' }),
       Course.find().populate('students'),
-      ProductPayment.find({ status: 'paid' }).populate({ path: 'orderId', populate: { path: 'items.productId' } }),
+      ProductPayment.find({ status: 'paid' }).populate({
+        path: 'orderId',
+        populate: { path: 'items.productId' },
+      }),
     ]);
 
     const now = new Date();
     const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-    let currentCourseRevenue = 0, lastCourseRevenue = 0;
-    courses.forEach(course => {
+    let currentCourseRevenue = 0;
+    let lastCourseRevenue = 0;
+    courses.forEach((course) => {
       const price = parseFloat(course.price) || 0;
-      course.students?.forEach(s => {
+      course.students?.forEach((s) => {
         const enrolled = new Date(s.enrolledAt || course.createdAt);
         if (enrolled >= currentMonth) currentCourseRevenue += price;
         else if (enrolled >= lastMonth) lastCourseRevenue += price;
       });
     });
 
-    let currentShopRevenue = 0, lastShopRevenue = 0;
-    paidPayments.forEach(payment => {
+    let currentShopRevenue = 0;
+    let lastShopRevenue = 0;
+    paidPayments.forEach((payment) => {
       const paidDate = new Date(payment.paidAt);
       const items = payment.orderId?.items || [];
-      const total = items.reduce((sum, item) => sum + ((item.productId?.price || 0) * item.quantity), 0);
+      const total = items.reduce(
+        (sum, item) => sum + ((item.productId?.price || 0) * item.quantity),
+        0
+      );
       if (paidDate >= currentMonth) currentShopRevenue += total;
       else if (paidDate >= lastMonth) lastShopRevenue += total;
     });
@@ -85,20 +106,32 @@ const getAdminDashboardStats = async (accessToken) => {
       totalUsers,
       totalCourses,
       totalProducts,
-      activeTeachers: teachers.filter(t => courses.some(c => c.teacherId?.toString() === t._id.toString())).length,
+      activeTeachers: teachers.filter((t) =>
+        courses.some((c) => c.teacherId?.toString() === t._id.toString())
+      ).length,
       monthlyCourseRevenue: currentCourseRevenue,
       monthlyShopRevenue: currentShopRevenue,
       totalRevenue: currentCourseRevenue + currentShopRevenue,
-      monthlyGrowthRate: lastCourseRevenue ? (((currentCourseRevenue - lastCourseRevenue) / lastCourseRevenue) * 100).toFixed(2) : 'N/A',
-      shopGrowthRate: lastShopRevenue ? (((currentShopRevenue - lastShopRevenue) / lastShopRevenue) * 100).toFixed(2) : 'N/A',
+      monthlyGrowthRate: lastCourseRevenue
+        ? (((currentCourseRevenue - lastCourseRevenue) / lastCourseRevenue) * 100).toFixed(2)
+        : 'N/A',
+      shopGrowthRate: lastShopRevenue
+        ? (((currentShopRevenue - lastShopRevenue) / lastShopRevenue) * 100).toFixed(2)
+        : 'N/A',
     };
 
     return response;
   } catch (err) {
-    return { status: 'error', error: err.message || 'Server error', timestamp: new Date().toISOString() };
+    return {
+      status: 'error',
+      error: err.message || 'Failed to load admin stats',
+      timestamp: new Date().toISOString(),
+    };
   }
 };
 
+
+//////////////////// Update User  ////////////////////
 const updateUser = async (accessToken, userId, updateData) => {
   const decoded = verifyToken(accessToken);
   if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
@@ -124,6 +157,8 @@ const deleteUser = async (accessToken, userId) => {
   return { message: 'User deleted' };
 };
 
+
+//////////////////// Get Teacher Stat ////////////////////
 const getTeacherStats = async (accessToken) => {
   const decoded = verifyToken(accessToken);
   if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
@@ -153,6 +188,8 @@ const getTeacherStats = async (accessToken) => {
 
   return { success: true, data: result };
 };
+
+
 
 module.exports = {
   adminLogin,

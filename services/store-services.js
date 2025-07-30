@@ -2,6 +2,7 @@ const Product = require('../models/product-model');
 const Cart = require('../models/cart-model');
 const { verifyToken } = require('../utils/verifyToken');
 
+
 //////////////////// Create Product ////////////////////
 const createProduct = async (accessToken, productData) => {
   try {
@@ -46,6 +47,7 @@ const createProduct = async (accessToken, productData) => {
   }
 };
 
+
 //////////////////// Get All Products ////////////////////
 const getAllProducts = async () => {
   try {
@@ -56,6 +58,7 @@ const getAllProducts = async () => {
     return { success: false, status: 503, message: err.message };
   }
 };
+
 
 //////////////////// Get Product by ID ////////////////////
 const getProductById = async (productId) => {
@@ -68,6 +71,7 @@ const getProductById = async (productId) => {
     return { success: false, status: 503, message: err.message };
   }
 };
+
 
 //////////////////// Update Product ////////////////////
 const updateProduct = async (accessToken, productId, updateData) => {
@@ -97,6 +101,7 @@ const updateProduct = async (accessToken, productId, updateData) => {
   }
 };
 
+
 //////////////////// Delete Product ////////////////////
 const deleteProduct = async (accessToken, productId) => {
   try {
@@ -120,6 +125,7 @@ const deleteProduct = async (accessToken, productId) => {
     return { success: false, status: 503, message: err.message };
   }
 };
+
 
 //////////// Add item to Cart ///////////////////////////
 const addItemToCart = async (accessToken, productId, quantity = 1) => {
@@ -166,6 +172,7 @@ const addItemToCart = async (accessToken, productId, quantity = 1) => {
   }
 };
 
+
 ////////// Get Cart //////////////////////////////
 const getCart = async (accessToken) => {
   try {
@@ -186,6 +193,7 @@ const getCart = async (accessToken) => {
     return { success: false, status: 503, message: err.message };
   }
 };
+
 
 //////////////////// Remove Item from Cart ////////////////////
 const removeItemFromCart = async (accessToken, productId) => {
@@ -222,6 +230,7 @@ const removeItemFromCart = async (accessToken, productId) => {
   }
 };
 
+
 //////////////////// Clear Cart ////////////////////
 const clearCart = async (accessToken) => {
   try {
@@ -248,6 +257,8 @@ const clearCart = async (accessToken) => {
     return { success: false, status: 503, message: err.message };
   }
 };
+
+
 
 module.exports = {
   createProduct,

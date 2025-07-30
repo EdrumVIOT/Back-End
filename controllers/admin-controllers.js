@@ -1,5 +1,6 @@
 const adminServices = require('../services/admin-services');
 
+
 ///////////////////// Admin Login /////////////////////
 const adminLogin = async (req, res, next) => {
   /*
@@ -30,6 +31,7 @@ const adminLogin = async (req, res, next) => {
     next(err);
   }
 };
+
 
 ///////////////////// Create User /////////////////////
 const createNewUser = async (req, res, next) => {
@@ -71,6 +73,7 @@ const createNewUser = async (req, res, next) => {
   }
 };
 
+
 /////////////////// Get Admin Dashboard Stats /////////////////////
 const getAdminDashboardStats = async (req, res, next) => {
   /*
@@ -85,14 +88,15 @@ const getAdminDashboardStats = async (req, res, next) => {
   */
   try {
     console.log('[Admin Dashboard] Request Headers:', req.headers);
-
-    const result = await adminServices.getAdminDashboardStats(req.headers.authorization);
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const result = await adminServices.getAdminDashboardStats(accessToken);
     res.status(200).json(result);
   } catch (err) {
     console.error('[Dashboard Stats Error]', err.message || err);
     next(err);
   }
 };
+
 
 /////////////////// Update User /////////////////////
 const updateUserInfo = async (req, res, next) => {
@@ -133,6 +137,7 @@ const updateUserInfo = async (req, res, next) => {
   }
 };
 
+
 /////////////////// Delete User /////////////////////
 const deleteUserById = async (req, res, next) => {
   /*
@@ -165,6 +170,7 @@ const deleteUserById = async (req, res, next) => {
     next(err);
   }
 };
+
 
 /////////////////// Get Teacher Stats /////////////////////
 const getTeacherStats = async (req, res, next) => {

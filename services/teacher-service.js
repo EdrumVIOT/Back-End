@@ -8,11 +8,11 @@ const CourseEnrollment = require('../models/course-enroll-model');
 const User = require('../models/user-model');
 const { verifyToken } = require('../utils/verifyToken');
 const HttpError = require('../middleware/http-error');
-
 const dbx = new Dropbox({
   accessToken: process.env.DROPBOX_ACCESS_TOKEN,
   fetch,
 });
+
 
 // Get Teacher's Courses with Lessons
 const getTeacherCoursesWithLessons = async (accessToken) => {
@@ -41,6 +41,7 @@ const getTeacherCoursesWithLessons = async (accessToken) => {
   }
 };
 
+
 // Create Course
 const createCourse = async ({ accessToken, title, description, level, category, price }) => {
   try {
@@ -56,6 +57,7 @@ const createCourse = async ({ accessToken, title, description, level, category, 
     throw new HttpError(err.message || 'Failed to create course', 503);
   }
 };
+
 
 // Create Lesson
 const createLesson = async ({ accessToken, courseId, filePath, filename, duration, thumbnailPath, thumbnailFilename }) => {
@@ -87,6 +89,7 @@ const createLesson = async ({ accessToken, courseId, filePath, filename, duratio
     throw new HttpError(err.message || 'Failed to create lesson', 503);
   }
 };
+
 
 // Get Enrolled Students
 const getEnrolledStudentsInMyCourses = async (accessToken) => {
@@ -120,6 +123,7 @@ const getEnrolledStudentsInMyCourses = async (accessToken) => {
     throw new HttpError(err.message || 'Failed to get students', 503);
   }
 };
+
 
 // Set Meeting Time
 const setMeetingTime = async ({ accessToken, date, startTime, endTime, price }) => {
