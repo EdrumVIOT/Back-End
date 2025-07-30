@@ -1,29 +1,60 @@
 const fs = require('fs');
-const path = require('path');
 const { Dropbox } = require('dropbox');
+const fetch = require('node-fetch');
 const Lesson = require('../models/lesson-model');
-const fetch = require('node-fetch'); 
+const Course = require('../models/course-model');
+const { verifyToken } = require('../utils/verifyToken');
+const HttpError = require('../utils/HttpError');
 
 const dbx = new Dropbox({
   accessToken: process.env.DROPBOX_ACCESS_TOKEN,
   fetch,
 });
 
-
-const createLesson = async ({accessToken, courseId, filePath, filename, duration, thumbnailUrl }) => {
+//////////////////// CREATE COURSE ////////////////////
+const createCourse = async ({ accessToken, title, description, level, category, price }) => {
   try {
-
     if (!accessToken) {
-      throw new Error('Access token is required');
+      throw new HttpError('Access token is required', 401);
     }
 
     const decoded = verifyToken(accessToken);
 
-    if ( decoded.role !== 'admin' || decoded.role !== 'teacher') {
-          throw new HttpError('Unauthorized: Admin or teacher access required.', 403);
-        }
-    
-    
+    if (!['teacher', 'admin'].includes(decoded.role)) {
+      throw new HttpError('Only teachers or admins can create courses', 403);
+    }
+
+    const course = new Course({
+      teacherUserId: decoded.userId,
+      title,
+      description,
+      level,
+      category,
+      price,
+    });
+
+    const savedCourse = await course.save();
+
+    return { success: true, data: savedCourse };
+  } catch (err) {
+    console.error('[createCourse error]', err);
+    return { success: false, error: err.message || 'Failed to create course' };
+  }
+};
+
+//////////////////// CREATE LESSON ////////////////////
+const createLesson = async ({ accessToken, courseId, filePath, filename, duration, thumbnailUrl }) => {
+  try {
+    if (!accessToken) {
+      throw new HttpError('Access token is required', 401);
+    }
+
+    const decoded = verifyToken(accessToken);
+
+    if (!['teacher', 'admin'].includes(decoded.role)) {
+      throw new HttpError('Only teachers or admins can upload lessons', 403);
+    }
+
     const fileContent = fs.readFileSync(filePath);
     const dropboxUploadPath = '/' + filename;
 
@@ -55,8 +86,11 @@ const createLesson = async ({accessToken, courseId, filePath, filename, duration
     return { success: true, data: savedLesson };
   } catch (err) {
     console.error('[createLesson error]', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message || 'Failed to create lesson' };
   }
 };
 
-module.exports = { createLesson };
+module.exports = {
+  createCourse,
+  createLesson,
+};
