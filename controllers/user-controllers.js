@@ -1,5 +1,6 @@
 const userServices = require('../services/user-services');
 
+
 //////////////////////  User Signup  ////////////////////////////////////////
 const signup = async (req, res, next) => {
   /*
@@ -21,9 +22,10 @@ const signup = async (req, res, next) => {
   */
   try {
     const result = await userServices.signupService(req.body);
-    res.status(201).json(result); 
+    res.status(201).json(result);
   } catch (err) {
-    next(err); 
+    console.error('[signup error]', err);
+    res.status(422).json({ error: err.message });
   }
 };
 
@@ -48,9 +50,11 @@ const handleSignupOtp = async (req, res, next) => {
     const result = await userServices.handleSignupOtpService(req.body);
     res.json(result);
   } catch (err) {
-    next(err);
+    console.error('[handleSignupOtp error]', err);
+    res.status(422).json({ error: err.message });
   }
 };
+
 
 //////////////////////   User Login   ///////////////////////////////////
 const login = async (req, res, next) => {
@@ -71,9 +75,11 @@ const login = async (req, res, next) => {
     const result = await userServices.loginService(req.body);
     res.json(result);
   } catch (err) {
-    next(err);
+    console.error('[login error]', err);
+    res.status(401).json({ error: err.message });
   }
 };
+
 
 ///////////////////// Refresh Access Token ////////////////////////////////////
 const refreshAccessToken = async (req, res, next) => {
@@ -94,10 +100,13 @@ const refreshAccessToken = async (req, res, next) => {
     const result = await userServices.refreshAccessTokenService(refreshToken);
     res.json(result);
   } catch (err) {
-    next(err);
+    console.error('[refreshAccessToken error]', err);
+    res.status(403).json({ error: err.message });
   }
 };
-//////////////////////// Get User Data /////////////////////////////////////////////////////////////////
+
+
+//////////////////////// Get User Data ////////////////////////////////
 const getUserData = async (req, res, next) => {
   /*
     #swagger.tags = ['User']
@@ -112,22 +121,19 @@ const getUserData = async (req, res, next) => {
     }
   */
   try {
-    const authHeader = req.headers.authorization;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access token missing' });
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Access token missing or malformed' });
-    }
-
-    const accessToken = authHeader.split(' ')[1].trim();
-    const result = await userServices.getUserDataService(accessToken);
+    const result = await userServices.getUserDataService(token);
     res.json(result);
   } catch (err) {
-    next(err);
+    console.error('[getUserData error]', err);
+    res.status(403).json({ error: err.message });
   }
 };
 
 
-/////////////// Request OTP for Password Reset ///////////////////////////////////
+/////////////// Request OTP for Password Reset ////////////////////////
 const requestReset = async (req, res, next) => {
   /*
     #swagger.tags = ['User']
@@ -146,11 +152,13 @@ const requestReset = async (req, res, next) => {
     const result = await userServices.requestResetService(phoneNumber);
     res.json(result);
   } catch (err) {
-    next(err);
+    console.error('[requestReset error]', err);
+    res.status(422).json({ error: err.message });
   }
 };
 
-///////////////// Verify or Resend OTP for Password Reset ////////////////
+
+///////////////// Verify or Resend OTP for Password Reset ////////////////////
 const verifyOrResendOtp = async (req, res, next) => {
   /*
     #swagger.tags = ['User']
@@ -170,9 +178,11 @@ const verifyOrResendOtp = async (req, res, next) => {
     const result = await userServices.verifyOrResendOtpService(req.body);
     res.json(result);
   } catch (err) {
-    next(err);
+    console.error('[verifyOrResendOtp error]', err);
+    res.status(422).json({ error: err.message });
   }
 };
+
 
 ///////////////// Reset Password ///////////////////////
 const resetPassword = async (req, res, next) => {
@@ -196,19 +206,15 @@ const resetPassword = async (req, res, next) => {
     }
   */
   try {
-    const authHeader = req.headers['authorization'];
-    const resetToken = authHeader?.split(' ')[1]; 
-
-    if (!resetToken) {
-      throw new HttpError("Reset token is missing from Authorization header", 401);
-    }
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Reset token missing' });
 
     const { newPassword } = req.body;
-    const result = await userServices.resetPasswordService(resetToken, newPassword);
-
+    const result = await userServices.resetPasswordService(token, newPassword);
     res.json(result);
   } catch (err) {
-    next(err);
+    console.error('[resetPassword error]', err);
+    res.status(422).json({ error: err.message });
   }
 };
 
@@ -236,21 +242,18 @@ const changeUserPassword = async (req, res, next) => {
     }
   */
   try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access token missing' });
+
     const { currentPassword, newPassword } = req.body;
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Access token missing or malformed' });
-    }
-
-    const accessToken = authHeader.split(' ')[1].trim();
-    const result = await userServices.changeUserPasswordService(accessToken, currentPassword, newPassword);
-
+    const result = await userServices.changeUserPasswordService(token, currentPassword, newPassword);
     res.json(result);
   } catch (err) {
-    next(err);
+    console.error('[changeUserPassword error]', err);
+    res.status(422).json({ error: err.message });
   }
 };
+
 
 ////////////// Write Comment ////////////////////////////////
 const writeComment = async (req, res, next) => {
@@ -274,15 +277,18 @@ const writeComment = async (req, res, next) => {
     }
   */
   try {
-    const accessToken = req.headers.authorization?.split(' ')[1];
-    const { lessonId , content } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access token missing' });
 
-    const result = await writeComment(accessToken, lessonId, content);
+    const { lessonId, content } = req.body;
+    const result = await userServices.writeComment(token, lessonId, content);
     res.status(201).json(result);
   } catch (err) {
-    next(err);
+    console.error('[writeComment error]', err);
+    res.status(422).json({ error: err.message });
   }
 };
+
 
 /////////////////// Reply to a Comment /////////////////////
 const replyToComment = async (req, res, next) => {
@@ -307,18 +313,17 @@ const replyToComment = async (req, res, next) => {
     }
   */
   try {
-    const accessToken = req.headers.authorization?.split(' ')[1];
-    const { lessonId, parentId , content} = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access token missing' });
 
-    const result = await replyToComment(accessToken, lessonId, parentId, content);
+    const { lessonId, parentId, content } = req.body;
+    const result = await userServices.replyToComment(token, lessonId, parentId, content);
     res.status(201).json(result);
   } catch (err) {
-    next(err);
+    console.error('[replyToComment error]', err);
+    res.status(422).json({ error: err.message });
   }
 };
-
-
-
 
 module.exports = {
   signup,
@@ -330,6 +335,6 @@ module.exports = {
   verifyOrResendOtp,
   resetPassword,
   changeUserPassword,
+  writeComment,
   replyToComment,
-  writeComment
 };

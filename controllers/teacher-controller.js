@@ -1,5 +1,7 @@
 const teacherServices = require('../services/teacher-service');
 
+
+//////////// Get Own Courses ////////////////////////////
 const getOwnCourses = async (req, res, next) => {
   /*
     #swagger.tags = ['Course']
@@ -15,11 +17,36 @@ const getOwnCourses = async (req, res, next) => {
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
     const result = await teacherServices.getTeacherCoursesWithLessons(accessToken);
-    res.status(200).json(result);
+    return res.status(200).json(result);
   } catch (err) {
-    next(err);
+    console.error('[getOwnCourses error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
   }
 };
+
+
+//////////// Get Enrolled Students ////////////////////////////
+const getOwnStudents = async (req, res, next) => {
+  /*
+    #swagger.tags = ['Course']
+    #swagger.summary = 'Get students enrolled in teacher\'s courses'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer accessToken'
+    }
+  */
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const result = await teacherServices.getEnrolledStudentsInMyCourses(accessToken);
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[getOwnStudents error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
+  }
+};
+
 
 //////////// Create Course //////////////////////////////
 const createCourse = async (req, res) => {
@@ -45,35 +72,19 @@ const createCourse = async (req, res) => {
       }
     }
   */
-
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
-    if (!accessToken) {
-      return res.status(401).json({ error: 'Access token is missing' });
-    }
-
     const { title, description, level, category, price } = req.body;
 
+    if (!accessToken) return res.status(401).json({ error: 'Access token is missing' });
     if (!title || typeof price !== 'number') {
       return res.status(422).json({ error: 'Title and price are required and must be valid' });
     }
 
-    const result = await teacherServices.createCourse({
-      accessToken,
-      title,
-      description,
-      level,
-      category,
-      price,
-    });
+    const result = await teacherServices.createCourse({ accessToken, title, description, level, category, price });
 
-    if (result.success) {
-      return res.status(201).json({ course: result.data });
-    }
-
-    if (result.error === 'Unauthorized') {
-      return res.status(403).json({ error: 'Only admin or teacher can create courses' });
-    }
+    if (result.success) return res.status(201).json({ course: result.data });
+    if (result.error === 'Unauthorized') return res.status(403).json({ error: 'Only admin or teacher can create courses' });
 
     return res.status(503).json({ error: result.error || 'Service unavailable while creating course' });
   } catch (err) {
@@ -82,8 +93,8 @@ const createCourse = async (req, res) => {
   }
 };
 
-//////////// Upload Lesson /////////////////////////////
 
+//////////// Upload Lesson /////////////////////////////
 const uploadLesson = async (req, res) => {
   /*
     #swagger.tags = ['Lesson']
@@ -123,18 +134,12 @@ const uploadLesson = async (req, res) => {
       example: 360
     }
   */
-
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
-    if (!accessToken) {
-      return res.status(401).json({ error: 'Access token is missing' });
-    }
-
     const { courseId, duration } = req.body;
 
-    if (!req.files?.video) {
-      return res.status(422).json({ error: 'Video file is required' });
-    }
+    if (!accessToken) return res.status(401).json({ error: 'Access token is missing' });
+    if (!req.files?.video) return res.status(422).json({ error: 'Video file is required' });
 
     const videoFile = req.files.video[0];
     const thumbnailFile = req.files.thumbnail?.[0];
@@ -149,13 +154,8 @@ const uploadLesson = async (req, res) => {
       thumbnailFilename: thumbnailFile?.filename,
     });
 
-    if (result.success) {
-      return res.status(201).json({ lesson: result.data });
-    }
-
-    if (result.error === 'Unauthorized') {
-      return res.status(403).json({ error: 'Only admin or teacher can upload lessons' });
-    }
+    if (result.success) return res.status(201).json({ lesson: result.data });
+    if (result.error === 'Unauthorized') return res.status(403).json({ error: 'Only admin or teacher can upload lessons' });
 
     return res.status(503).json({ error: result.error || 'Service unavailable while uploading lesson' });
   } catch (err) {
@@ -165,12 +165,11 @@ const uploadLesson = async (req, res) => {
 };
 
 
-
-////// Log Views //////////////////
-const viewLesson = async (req, res) => {
-    /*
-    #swagger.tags = ['Course']
-    #swagger.summary = 'Create a new course (admin or teacher only)'
+///////// Set Meeting Time //////////////
+const setMeeting = async (req, res) => {
+  /*
+    #swagger.tags = ['Meeting']
+    #swagger.summary = 'Set meeting time (teacher only)'
     #swagger.parameters['Authorization'] = {
       in: 'header',
       required: true,
@@ -182,40 +181,40 @@ const viewLesson = async (req, res) => {
       in: 'body',
       required: true,
       schema: {
-      lessonId: " ",
-      progress: " ",
-      completed: " "
+        date: "2025-08-01T00:00:00Z",
+        startTime: "13:00",
+        endTime: "13:30",
+        price: 10
       }
     }
   */
-
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
-    const { lessonId, progress, completed } = req.body;
+    const { date, startTime, endTime, price } = req.body;
 
-    const result = await teacherServices.logLessonView({
-      accessToken,
-      lessonId,
-      progress,
-      completed,
-    });
+    const result = await teacherServices.setMeetingTime({ accessToken, date, startTime, endTime, price });
 
-    if (result.success) {
-      return res.status(200).json({ log: result.data });
-    }
+    if (result.success) return res.status(200).json(result);
 
-    return res.status(400).json({ error: result.error });
+    const status = result.error.includes('token')
+      ? 401
+      : result.error.includes('Only teachers')
+        ? 403
+        : 503;
+
+    return res.status(status).json({ success: false, error: result.error });
   } catch (err) {
-    console.error('[viewLesson controller]', err);
-    return res.status(503).json({ error: 'Service unavailable' });
+    console.error('[setMeeting error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
   }
 };
 
 
 
-
-module.exports = { getOwnCourses,
-                  createCourse,
-                  uploadLesson,
-                  viewLesson,
-                };
+module.exports = {
+  getOwnCourses,
+  getOwnStudents,
+  createCourse,
+  uploadLesson,
+  setMeeting,
+};

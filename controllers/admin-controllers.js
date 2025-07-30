@@ -1,8 +1,6 @@
 const adminServices = require('../services/admin-services');
 
-
-
-//////////// Admin Login ////////////////////////////
+///////////////////// Admin Login /////////////////////
 const adminLogin = async (req, res, next) => {
   /*
     #swagger.tags = ['User']
@@ -18,116 +16,94 @@ const adminLogin = async (req, res, next) => {
     }
   */
   try {
+    console.log('[Admin Login] Incoming request:', req.body);
+
+    const { phoneNumber, password } = req.body;
+    if (!phoneNumber || !password) {
+      return res.status(400).json({ success: false, message: 'Phone number and password are required' });
+    }
+
     const result = await adminServices.adminLogin(req.body);
-    res.json(result); 
+    res.json(result);
   } catch (err) {
+    console.error('[Admin Login Error]', err.message || err);
     next(err);
   }
 };
 
-////////////////// Create User  /////////////////////////
+///////////////////// Create User /////////////////////
 const createNewUser = async (req, res, next) => {
   /*
     #swagger.tags = ['Admin']
     #swagger.summary = 'Create new user'
-    #swagger.description = 'Create a new user in the system'
     #swagger.parameters['Authorization'] = {
       in: 'header',
       required: true,
       type: 'string',
-      description: 'Bearer access token',
       example: 'Bearer your_access_token_here'
     }
     #swagger.parameters['body'] = {
       in: 'body',
       required: true,
       schema: {
-          firstName: " ",
-          lastName:  " ",
-          phoneNumber:  " ",
-          email:  " ",
-          password: " ",
-          role: " "
-        },
+        firstName: "string",
+        lastName: "string",
+        phoneNumber: "string",
+        email: "string",
+        password: "string",
+        role: "string"
       }
     }
   */
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-    
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Access token missing' });
-    }
+    console.log('[Create User] Body:', req.body);
 
     const { firstName, lastName, phoneNumber, email, password, role } = req.body;
     if (!firstName || !lastName || !phoneNumber || !email || !password || !role) {
       return res.status(400).json({ success: false, message: 'All fields are required' });
     }
 
-    const result = await adminServices.createUser(token, req.body);
+    const result = await adminServices.createUser(req.headers.authorization, req.body);
     res.status(201).json(result);
   } catch (err) {
+    console.error('[Create User Error]', err.message || err);
     next(err);
   }
 };
 
-
-///////////////////  Get All Users ////////////////////////////////
+/////////////////// Get Admin Dashboard Stats /////////////////////
 const getAdminDashboardStats = async (req, res, next) => {
   /*
     #swagger.tags = ['Admin']
-    #swagger.summary = 'Get all users'
-    #swagger.description = 'Retrieve all users from the system'
+    #swagger.summary = 'Get admin dashboard stats'
     #swagger.parameters['Authorization'] = {
       in: 'header',
       required: true,
-      description: 'Bearer access token',
       type: 'string',
-      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+      example: 'Bearer your_access_token_here'
     }
   */
   try {
-    console.log('[Admin Dashboard] Incoming request to get admin stats.');
+    console.log('[Admin Dashboard] Request Headers:', req.headers);
 
-    const authHeader = req.headers.authorization || '';
-    console.log('[Auth Header]', authHeader);
-
-    if (!authHeader.startsWith('Bearer ')) {
-      console.error('[Auth Error] Malformed or missing token');
-      return res.status(401).json({
-        success: false,
-        message: 'Access token missing or malformed',
-      });
-    }
-
-    const accessToken = authHeader.split(' ')[1].trim();
-    console.log('[Access Token]', accessToken);
-
-    const result = await adminServices.getAdminDashboardStats(accessToken);
-
-    console.log('[Dashboard Stats] Result:', result);
-
+    const result = await adminServices.getAdminDashboardStats(req.headers.authorization);
     res.status(200).json(result);
   } catch (err) {
-    console.error('[Admin Dashboard Error]', err.message || err);
+    console.error('[Dashboard Stats Error]', err.message || err);
     next(err);
   }
 };
 
-
-//////////////////  Update User //////////////////////
+/////////////////// Update User /////////////////////
 const updateUserInfo = async (req, res, next) => {
   /*
     #swagger.tags = ['Admin']
     #swagger.summary = 'Update user info'
-    #swagger.description = 'Update user information in the system'
     #swagger.parameters['Authorization'] = {
       in: 'header',
       required: true,
-      description: 'Bearer access token with admin role',
       type: 'string',
-      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+      example: 'Bearer your_access_token_here'
     }
     #swagger.parameters['body'] = {
       in: 'body',
@@ -143,29 +119,31 @@ const updateUserInfo = async (req, res, next) => {
     }
   */
   try {
-    const authHeader = req.headers.authorization;
+    console.log('[Update User] Body:', req.body);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Access token missing or malformed' });
+    if (!req.body.userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
-    const accessToken = authHeader.split(' ')[1].trim();
-
-    const result = await adminServices.updateUser(accessToken, req.body);
-    res.status(200).json(result); 
+    const result = await adminServices.updateUser(req.headers.authorization, req.body);
+    res.status(200).json(result);
   } catch (err) {
-    next(err); 
+    console.error('[Update User Error]', err.message || err);
+    next(err);
   }
 };
 
-
-
-///////////////// Delete User ////////////////////////
+/////////////////// Delete User /////////////////////
 const deleteUserById = async (req, res, next) => {
   /*
     #swagger.tags = ['Admin']
     #swagger.summary = 'Delete user'
-    #swagger.description = 'Delete a user from the system'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      example: 'Bearer your_access_token_here'
+    }
     #swagger.parameters['body'] = {
       in: 'body',
       required: true,
@@ -173,69 +151,49 @@ const deleteUserById = async (req, res, next) => {
         userId: "string"
       }
     }
-    #swagger.parameters['Authorization'] = {
-      in: 'header',
-      required: true,
-      description: 'Bearer access token',
-      type: 'string',
-      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
-    }
   */
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Access token missing or malformed' });
-    }
-    const accessToken = authHeader.split(' ')[1].trim();
-
     const { userId } = req.body;
     if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required in the request body' });
+      return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
-    const result = await adminServices.deleteUser(accessToken, userId);
-    res.status(200).json(result); 
+    const result = await adminServices.deleteUser(req.headers.authorization, userId);
+    res.status(200).json(result);
   } catch (err) {
-    next(err); 
+    console.error('[Delete User Error]', err.message || err);
+    next(err);
   }
 };
 
-
-/////////////// Get Teacher Stats //////////////////////////////////////////
+/////////////////// Get Teacher Stats /////////////////////
 const getTeacherStats = async (req, res, next) => {
   /*
     #swagger.tags = ['Admin']
-    #swagger.summary = 'Get all users'
-    #swagger.description = 'Retrieve all users from the system'
+    #swagger.summary = 'Get teacher statistics'
     #swagger.parameters['Authorization'] = {
       in: 'header',
       required: true,
-      description: 'Bearer access token',
       type: 'string',
-      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+      example: 'Bearer your_access_token_here'
     }
   */
   try {
-    const authHeader = req.headers.authorization || '';
-    if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Access token missing or malformed' });
-    }
+    console.log('[Get Teacher Stats]');
 
-    const accessToken = authHeader.split(' ')[1].trim();
-
-    const result = await adminServices.getTeacherStats(accessToken);
-    res.status(200).json(result); 
+    const result = await adminServices.getTeacherStats(req.headers.authorization);
+    res.status(200).json(result);
   } catch (err) {
-    next(err); 
+    console.error('[Teacher Stats Error]', err.message || err);
+    next(err);
   }
 };
 
-
 module.exports = {
+  adminLogin,
   createNewUser,
   getAdminDashboardStats,
   updateUserInfo,
   deleteUserById,
-  adminLogin,
   getTeacherStats
 };

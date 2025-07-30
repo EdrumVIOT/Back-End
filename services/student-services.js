@@ -1,6 +1,8 @@
 const Course = require('../models/course-model');
 const Lesson = require('../models/lesson-model');
 const CourseEnrollment = require('../models/course-enroll-model');
+const LessonViews = require('../models/lesson-view-model')
+const Booking = require('../models/booking-model')
 const { verifyToken } = require("../utils/verifyToken");
 
 
@@ -114,4 +116,95 @@ const rateLesson = async (accessToken, lessonId, ratingValue) => {
   }
 };
 
-module.exports = { getStudentCoursesWithLessons ,getAllCoursesWithLessons , rateLesson};
+
+//////////// View Log //////////////////////////////////////////
+const logLessonView = async ({ accessToken, lessonId, progress, completed }) => {
+  try {
+    if (!accessToken) {
+      throw new HttpError('Access token is required', 401);
+    }
+
+    const decoded = verifyToken(accessToken);
+
+    if (decoded.role !== 'student') {
+      console.warn(`[logLessonView] Skipped logging for non-student (role: ${decoded.role})`);
+      return { success: true, data: null, skipped: true };
+    }
+
+    if (!lessonId || typeof progress !== 'number') {
+      throw new HttpError('Lesson ID and progress are required', 422);
+    }
+
+    const lessonExists = await Lesson.findById(lessonId);
+    if (!lessonExists) {
+      throw new HttpError('Lesson not found', 404);
+    }
+
+    const existingLog = await LessonViews.findOne({
+      studentUserId: decoded.userId,
+      lessonId,
+    });
+
+    const updateData = {
+      watchedAt: new Date(),
+      progress,
+      completed: !!completed,
+    };
+
+    let savedLog;
+    if (existingLog) {
+      existingLog.set(updateData);
+      savedLog = await existingLog.save();
+    } else {
+      const newLog = new LessonViews({
+        studentUserId: decoded.userId,
+        lessonId,
+        ...updateData,
+      });
+      savedLog = await newLog.save();
+    }
+
+    return { success: true, data: savedLog };
+  } catch (err) {
+    console.error('[logLessonView error]', err);
+    return { success: false, error: err.message };
+  }
+};
+
+
+///////////// Booking meeting /////////////////////////
+const bookMeeting = async ({ accessToken, meetingId, method }) => {
+  if (!accessToken) throw new HttpError('Access token required', 401);
+
+  const decoded = verifyToken(accessToken);
+
+  if (decoded.role !== 'student') {
+    throw new HttpError('Only students can book meetings', 403);
+  }
+
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    throw new HttpError('Meeting not found', 404);
+  }
+
+  const booking = new Booking({
+    meetingId,
+    studentId: decoded.userId,
+    method,
+    status: 'pending',
+    paidAt: new Date(),
+  });
+
+  const savedBooking = await booking.save();
+
+  return { success: true, data: savedBooking };
+};
+
+
+
+module.exports = { getStudentCoursesWithLessons,
+                   getAllCoursesWithLessons, 
+                   rateLesson,
+                   logLessonView,
+                   bookMeeting,
+                  };

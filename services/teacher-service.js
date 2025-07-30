@@ -3,7 +3,7 @@ const { Dropbox } = require('dropbox');
 const fetch = require('node-fetch');
 const Lesson = require('../models/lesson-model');
 const Course = require('../models/course-model');
-const LessonViews = require('../models/lesson-view-model')
+const Meeting = require('../models/meeting-model')
 const { verifyToken } = require('../utils/verifyToken');
 const HttpError = require('../middleware/http-error');
 
@@ -151,57 +151,85 @@ const createLesson = async ({ accessToken, courseId, filePath, filename, duratio
 };
 
 
-//////////// View Log //////////////////////////////////////////
-const logLessonView = async ({ accessToken, lessonId, progress, completed }) => {
+//////////////// Get Students ///////////////////////////////////////////////////
+const getEnrolledStudentsInMyCourses = async (accessToken) => {
   try {
     if (!accessToken) {
       throw new HttpError('Access token is required', 401);
     }
 
     const decoded = verifyToken(accessToken);
-
-    if (decoded.role !== 'student') {
-      console.warn(`[logLessonView] Skipped logging for non-student (role: ${decoded.role})`);
-      return { success: true, data: null, skipped: true };
+    if (decoded.role !== 'teacher') {
+      throw new HttpError('Only teachers can view enrolled students', 403);
     }
 
-    if (!lessonId || typeof progress !== 'number') {
-      throw new HttpError('Lesson ID and progress are required', 422);
-    }
+    const teacherUserId = decoded.userId;
 
-    const lessonExists = await Lesson.findById(lessonId);
-    if (!lessonExists) {
-      throw new HttpError('Lesson not found', 404);
-    }
+    const courses = await Course.find({ teacherUserId });
+    const courseIdSet = new Set(courses.map(course => course._id.toString()));
 
-    const existingLog = await LessonViews.findOne({
-      studentUserId: decoded.userId,
-      lessonId,
+    const enrollments = await CourseEnrollment.find({
+      courseId: { $in: Array.from(courseIdSet) }
     });
 
-    const updateData = {
-      watchedAt: new Date(),
-      progress,
-      completed: !!completed,
-    };
+    const studentIdSet = new Set(enrollments.map(enr => enr.studentUserId));
+    const students = await User.find({ userId: { $in: Array.from(studentIdSet) } });
 
-    let savedLog;
-    if (existingLog) {
-      existingLog.set(updateData);
-      savedLog = await existingLog.save();
-    } else {
-      const newLog = new LessonViews({
-        studentUserId: decoded.userId,
-        lessonId,
-        ...updateData,
-      });
-      savedLog = await newLog.save();
+    const studentMap = {};
+    enrollments.forEach(enr => {
+      const sid = enr.studentUserId;
+      const course = courses.find(c => c._id.toString() === enr.courseId.toString());
+      if (!studentMap[sid]) {
+        studentMap[sid] = {
+          studentUserId: sid,
+          enrolledCourses: [course],
+        };
+      } else {
+        studentMap[sid].enrolledCourses.push(course);
+      }
+    });
+
+    students.forEach(stu => {
+      if (studentMap[stu.userId]) {
+        studentMap[stu.userId].studentInfo = stu;
+      }
+    });
+
+    return { success: true, data: Object.values(studentMap) };
+
+  } catch (err) {
+    console.error('[getEnrolledStudentsInMyCourses Error]', err);
+    return { success: false, error: err.message || 'Failed to get students' };
+  }
+};
+
+
+/////////// Set Meeting TIme ////////////////////////////////////////////////////
+const setMeetingTime = async ({ accessToken, date, startTime, endTime, price }) => {
+  try {
+    if (!accessToken) {
+      throw new HttpError('Access token is required', 401);
     }
 
-    return { success: true, data: savedLog };
+    const decoded = verifyToken(accessToken);
+    if (decoded.role !== 'teacher') {
+      throw new HttpError('Only teachers can set meetings', 403);
+    }
+
+    const meeting = new Meeting({
+      teacherId: decoded.userId,
+      date,
+      startTime,
+      endTime,
+      price,
+      status: 'available',
+    });
+
+    const savedMeeting = await meeting.save();
+    return { success: true, data: savedMeeting };
   } catch (err) {
-    console.error('[logLessonView error]', err);
-    return { success: false, error: err.message };
+    console.error('[setMeetingTime error]', err);
+    return { success: false, error: err.message || 'Failed to set meeting time' };
   }
 };
 
@@ -211,6 +239,7 @@ const logLessonView = async ({ accessToken, lessonId, progress, completed }) => 
 module.exports = {
   createCourse,
   createLesson,
-  logLessonView,
   getTeacherCoursesWithLessons,
+  getEnrolledStudentsInMyCourses,
+  setMeetingTime,
 }; 

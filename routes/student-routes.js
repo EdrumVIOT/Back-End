@@ -9,4 +9,10 @@ router.get('/getAllCources', studentController.getAllCourses);
 
 router.post('/rateLesson', studentController.rateLessonController);
 
+router.post('/logViews', studentController.viewLesson);
+
+router.post('/bookMeeting', studentController.bookMeeting);
+
+
+
 module.exports = router;
