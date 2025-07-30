@@ -12,7 +12,6 @@ const adminRoutes = require('./routes/admin-routes');
 const studentRoutes = require('./routes/student-routes');
 const teacherRoutes = require('./routes/teacher-routes');
 const storeRoutes = require('./routes/store-routes');
-const courseRoutes = require('./routes/course-routes');
 
 dotenv.config({ path: './config/.env' });
 
@@ -39,7 +38,6 @@ app.use('/admin', adminRoutes);
 app.use('/student', studentRoutes);
 app.use('/teacher', teacherRoutes);
 app.use('/store', storeRoutes);
-app.use('/course', courseRoutes);
 
 
 app.use((req, res, next) => {
