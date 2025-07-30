@@ -190,6 +190,50 @@ const getTeacherStats = async (accessToken) => {
 };
 
 
+////////////// GET LATEST ACTION ///////////
+const getAdminLatestStats = async (accessToken) => {
+  const decoded = verifyToken(accessToken);
+  if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
+
+  try {
+    const [latestTeacher, latestStudent, latestStoreBuyer] = await Promise.all([
+      User.findOne({ role: 'teacher' }).sort({ createdAt: -1 }),
+      User.findOne({ role: 'student' }).sort({ createdAt: -1 }),
+      ProductPayment.find({ status: 'paid' })
+        .sort({ paidAt: -1 })
+        .limit(1)
+        .populate({ path: 'userId', select: 'firstName lastName phoneNumber createdAt' })
+    ]);
+
+    const result = {
+      latestTeacher: latestTeacher ? {
+        id: latestTeacher._id,
+        name: `${latestTeacher.firstName} ${latestTeacher.lastName}`,
+        phoneNumber: latestTeacher.phoneNumber,
+        createdAt: latestTeacher.createdAt
+      } : null,
+
+      latestStudent: latestStudent ? {
+        id: latestStudent._id,
+        name: `${latestStudent.firstName} ${latestStudent.lastName}`,
+        phoneNumber: latestStudent.phoneNumber,
+        createdAt: latestStudent.createdAt
+      } : null,
+
+      latestStoreBuyer: latestStoreBuyer.length > 0 ? {
+        id: latestStoreBuyer[0].userId?._id,
+        name: `${latestStoreBuyer[0].userId?.firstName} ${latestStoreBuyer[0].userId?.lastName}`,
+        phoneNumber: latestStoreBuyer[0].userId?.phoneNumber,
+        paidAt: latestStoreBuyer[0].paidAt
+      } : null
+    };
+
+    return { success: true, data: result };
+  } catch (err) {
+    throw new HttpError(err.message || 'Failed to load latest stats', 503);
+  }
+};
+
 
 module.exports = {
   adminLogin,
@@ -198,4 +242,5 @@ module.exports = {
   updateUser,
   deleteUser,
   getTeacherStats,
+  getAdminLatestStats,
 };
