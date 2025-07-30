@@ -57,6 +57,9 @@
         "responses": {
           "201": {
             "description": "Created"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -95,6 +98,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -129,6 +135,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
           }
         }
       }
@@ -159,6 +168,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }
@@ -191,6 +203,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }
@@ -221,6 +236,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -259,6 +277,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -302,6 +323,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -352,6 +379,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -398,6 +428,12 @@
         "responses": {
           "201": {
             "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -448,6 +484,12 @@
         "responses": {
           "201": {
             "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -482,6 +524,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }
@@ -492,14 +537,13 @@
           "Admin"
         ],
         "summary": "Create new user",
-        "description": "Create a new user in the system",
+        "description": "",
         "parameters": [
           {
             "name": "Authorization",
             "in": "header",
             "required": true,
             "type": "string",
-            "description": "Bearer access token",
             "example": "Bearer your_access_token_here"
           },
           {
@@ -511,35 +555,43 @@
               "properties": {
                 "firstName": {
                   "type": "string",
-                  "example": " "
+                  "example": "string"
                 },
                 "lastName": {
                   "type": "string",
-                  "example": " "
+                  "example": "string"
                 },
                 "phoneNumber": {
                   "type": "string",
-                  "example": " "
+                  "example": "string"
                 },
                 "email": {
                   "type": "string",
-                  "example": " "
+                  "example": "string"
                 },
                 "password": {
                   "type": "string",
-                  "example": " "
+                  "example": "string"
                 },
                 "role": {
                   "type": "string",
-                  "example": " "
+                  "example": "string"
                 }
               }
             }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }
@@ -549,16 +601,15 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Get all users",
-        "description": "Retrieve all users from the system",
+        "summary": "Get admin dashboard stats",
+        "description": "",
         "parameters": [
           {
             "name": "Authorization",
             "in": "header",
             "required": true,
-            "description": "Bearer access token",
             "type": "string",
-            "example": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+            "example": "Bearer your_access_token_here"
           },
           {
             "name": "authorization",
@@ -569,9 +620,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
           }
         }
       }
@@ -582,15 +630,14 @@
           "Admin"
         ],
         "summary": "Update user info",
-        "description": "Update user information in the system",
+        "description": "",
         "parameters": [
           {
             "name": "Authorization",
             "in": "header",
             "required": true,
-            "description": "Bearer access token with admin role",
             "type": "string",
-            "example": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+            "example": "Bearer your_access_token_here"
           },
           {
             "name": "body",
@@ -625,52 +672,6 @@
                 }
               }
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        }
-      }
-    },
-    "/admin/user/delete": {
-      "delete": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Delete user",
-        "description": "Delete a user from the system",
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "userId": {
-                  "type": "string",
-                  "example": "string"
-                }
-              }
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": true,
-            "description": "Bearer access token",
-            "type": "string",
-            "example": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
           },
           {
             "name": "authorization",
@@ -684,28 +685,38 @@
           },
           "400": {
             "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
           }
         }
       }
     },
-    "/admin/getTeacherStat": {
-      "get": {
+    "/admin/user/delete": {
+      "delete": {
         "tags": [
           "Admin"
         ],
-        "summary": "Get all users",
-        "description": "Retrieve all users from the system",
+        "summary": "Delete user",
+        "description": "",
         "parameters": [
           {
             "name": "Authorization",
             "in": "header",
             "required": true,
-            "description": "Bearer access token",
             "type": "string",
-            "example": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+            "example": "Bearer your_access_token_here"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "example": "string"
+                }
+              }
+            }
           },
           {
             "name": "authorization",
@@ -717,8 +728,36 @@
           "200": {
             "description": "OK"
           },
-          "401": {
-            "description": "Unauthorized"
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/admin/getTeacherStat": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get teacher statistics",
+        "description": "",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string",
+            "example": "Bearer your_access_token_here"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -789,7 +828,7 @@
               "properties": {
                 "lessonId": {
                   "type": "string",
-                  "example": " "
+                  "example": "lesson_object_id"
                 },
                 "rating": {
                   "type": "number",
@@ -807,6 +846,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }
@@ -814,10 +856,10 @@
     "/student/logViews": {
       "post": {
         "tags": [
-          "Course"
+          "Lesson"
         ],
-        "summary": "Create a new course (admin or teacher only)",
-        "description": "",
+        "summary": "Log lesson view progress",
+        "description": "Students can track viewing progress of a lesson",
         "parameters": [
           {
             "name": "Authorization",
@@ -836,15 +878,15 @@
               "properties": {
                 "lessonId": {
                   "type": "string",
-                  "example": " "
+                  "example": "lesson_object_id"
                 },
                 "progress": {
-                  "type": "string",
-                  "example": " "
+                  "type": "number",
+                  "example": 70
                 },
                 "completed": {
-                  "type": "string",
-                  "example": " "
+                  "type": "boolean",
+                  "example": false
                 }
               }
             }
@@ -861,9 +903,6 @@
           },
           "400": {
             "description": "Bad Request"
-          },
-          "503": {
-            "description": "Service Unavailable"
           }
         }
       }
@@ -874,7 +913,7 @@
           "Booking"
         ],
         "summary": "Book a meeting (Student only)",
-        "description": "",
+        "description": "Allows a student to book a teacher meeting slot",
         "parameters": [
           {
             "name": "Authorization",
@@ -893,11 +932,11 @@
               "properties": {
                 "meetingId": {
                   "type": "string",
-                  "example": " "
+                  "example": "meeting_object_id"
                 },
                 "method": {
                   "type": "string",
-                  "example": " "
+                  "example": "zoom"
                 }
               }
             }
@@ -911,6 +950,9 @@
         "responses": {
           "201": {
             "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
           }
         },
         "security": [
@@ -944,6 +986,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "503": {
+            "description": "Service Unavailable"
           }
         }
       }
@@ -1113,8 +1158,8 @@
         "tags": [
           "Course"
         ],
-        "summary": "Get teacher\\'s own courses",
-        "description": "Returns all courses and lessons created by the logged-in teacher",
+        "summary": "Get students enrolled in teacher\\'s courses",
+        "description": "",
         "parameters": [
           {
             "name": "Authorization",
@@ -1132,6 +1177,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "503": {
+            "description": "Service Unavailable"
           }
         }
       }
@@ -1139,9 +1187,9 @@
     "/teacher/setmeeting": {
       "post": {
         "tags": [
-          "Course"
+          "Meeting"
         ],
-        "summary": "Create a new course (admin or teacher only)",
+        "summary": "Set meeting time (teacher only)",
         "description": "",
         "parameters": [
           {
@@ -1161,19 +1209,19 @@
               "properties": {
                 "date": {
                   "type": "string",
-                  "example": " "
+                  "example": "2025-08-01T00:00:00Z"
                 },
                 "startTime": {
                   "type": "string",
-                  "example": ""
+                  "example": "13:00"
                 },
                 "endTime": {
                   "type": "string",
-                  "example": " "
+                  "example": "13:30"
                 },
                 "price": {
-                  "type": "string",
-                  "example": " "
+                  "type": "number",
+                  "example": 10
                 }
               }
             }
@@ -1275,8 +1323,8 @@
           "200": {
             "description": "OK"
           },
-          "500": {
-            "description": "Internal Server Error"
+          "503": {
+            "description": "Service Unavailable"
           }
         }
       }
@@ -1478,9 +1526,6 @@
           },
           "400": {
             "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }

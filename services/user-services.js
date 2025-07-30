@@ -1,111 +1,78 @@
 const User = require("../models/user-model");
 const HttpError = require("../middleware/http-error");
 const Otp = require('../models/otp-model');
+const Comment = require('../models/comment-model');
 const { sendMessage } = require("../utils/messageSender");
 const { verifyToken, verifyRefreshToken, verifyResetPasswordToken } = require("../utils/verifyToken");
 
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-const generateOtp = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString(); 
-};
-
-///////////// User Signup  /////////////////////////////////////////////////////////////////////////////////////
+// --------------------------- SIGNUP ---------------------------
 const signupService = async ({ firstName, lastName, email, phoneNumber, password, role = 'student' }) => {
   if (!firstName || !lastName || !phoneNumber || !password) {
-    throw new HttpError('All fields are required.', 400);
+    throw new HttpError('All fields are required.', 422);
   }
 
   const normalizedEmail = email.toLowerCase();
-
-  const existingUser = await User.findOne({
-    $or: [{ email: normalizedEmail }, { phoneNumber }],
-  });
+  const existingUser = await User.findOne({ $or: [{ email: normalizedEmail }, { phoneNumber }] });
 
   if (existingUser) {
-    if (existingUser.email === normalizedEmail) {
-      throw new HttpError('Email is already taken.', 422);
-    }
-    if (existingUser.phoneNumber === phoneNumber) {
-      throw new HttpError('Phone number is already registered.', 422);
-    }
+    if (existingUser.email === normalizedEmail) throw new HttpError('Email already in use.', 422);
+    if (existingUser.phoneNumber === phoneNumber) throw new HttpError('Phone number already registered.', 422);
   }
 
   const userId = Math.floor(Math.random() * 9000000) + 1000000;
-
-  const newUser = new User({
-    firstName,
-    lastName,
-    email: normalizedEmail,
-    phoneNumber,
-    password,
-    role,
-    isVerified: false,
-    score: 0,
-    lastLogin: null,
-    userId,
+  const newUser = await User.create({
+    firstName, lastName, email: normalizedEmail, phoneNumber, password,
+    role, isVerified: false, score: 0, lastLogin: null, userId
   });
 
-  await newUser.save();
-
   const otp = generateOtp();
-
   await Otp.create({ number: phoneNumber, otp });
 
   const messageSent = await sendMessage(phoneNumber, otp);
-  if (!messageSent) {
-    throw new HttpError('Failed to send OTP.', 503);
-  }
+  if (!messageSent) throw new HttpError('Failed to send OTP.', 503);
 
-  return { message: 'Signup successful. OTP sent to phone.' };
+  return { message: 'Signup successful. OTP sent.' };
 };
 
-///////////////// Handle Signup OTP //////////////////////////////////////////////
+// --------------------------- HANDLE OTP (VERIFY / RESEND) ---------------------------
 const handleSignupOtpService = async ({ phoneNumber, otp, action }) => {
-  if (!phoneNumber) throw new HttpError('Phone number is required.', 400);
-
+  if (!phoneNumber) throw new HttpError('Phone number is required.', 422);
   const user = await User.findOne({ phoneNumber });
   if (!user) throw new HttpError('User not found.', 404);
   if (user.isVerified) throw new HttpError('User already verified.', 400);
 
   if (action === 'verify') {
-    if (!otp) throw new HttpError('OTP is required for verification.', 400);
+    if (!otp) throw new HttpError('OTP is required.', 422);
 
     const otpRecord = await Otp.findOne({ number: phoneNumber, otp });
-    if (!otpRecord) throw new HttpError('Invalid or expired OTP.', 400);
+    if (!otpRecord) throw new HttpError('Invalid or expired OTP.', 403);
 
-    const isExpired = Date.now() - new Date(otpRecord.createdAt).getTime() > 60 * 1000;
+    const isExpired = Date.now() - new Date(otpRecord.createdAt).getTime() > 60_000;
     if (isExpired) {
       await Otp.deleteMany({ number: phoneNumber });
-      throw new HttpError('OTP expired.', 400);
+      throw new HttpError('OTP expired.', 403);
     }
 
-    const updatedUser = await User.findOneAndUpdate(
-      { phoneNumber },
-      { isVerified: true },
-      { new: true }
-    );
+    user.isVerified = true;
+    await user.save();
     await Otp.deleteMany({ number: phoneNumber });
 
-    const accessToken = updatedUser.generateAccessToken();
-    const refreshToken = updatedUser.generateRefreshToken();
-
     return {
-      message: 'Phone number verified successfully.',
-      accessToken,
-      refreshToken,
-      user: updatedUser.toObject({ getters: true }),
+      message: 'Phone number verified.',
+      accessToken: user.generateAccessToken(),
+      refreshToken: user.generateRefreshToken(),
+      user: user.toObject({ getters: true })
     };
   }
 
   if (action === 'resend') {
     const existingOtp = await Otp.findOne({ number: phoneNumber });
-    if (existingOtp) {
-      const timeSinceLastOtp = Date.now() - new Date(existingOtp.createdAt).getTime();
-      if (timeSinceLastOtp < 60 * 1000) {
-        throw new HttpError('Please wait before requesting a new OTP.', 429);
-      }
-      await Otp.deleteMany({ number: phoneNumber });
+    if (existingOtp && Date.now() - new Date(existingOtp.createdAt).getTime() < 60_000) {
+      throw new HttpError('Please wait before requesting a new OTP.', 429);
     }
+    await Otp.deleteMany({ number: phoneNumber });
 
     const newOtp = generateOtp();
     await Otp.create({ number: phoneNumber, otp: newOtp });
@@ -119,248 +86,175 @@ const handleSignupOtpService = async ({ phoneNumber, otp, action }) => {
   throw new HttpError('Invalid action type.', 400);
 };
 
-////////////////// User Login ////////////////////////////////////////////
+// --------------------------- LOGIN ---------------------------
 const loginService = async ({ phoneNumber, password }) => {
-  if (!phoneNumber) {
-    throw new HttpError('Phone number is required.', 400);
-  }
-
-  if (!password) {
-    throw new HttpError('Password is required.', 400);
-  }
+  if (!phoneNumber || !password) throw new HttpError('Phone number and password required.', 422);
 
   const user = await User.findOne({ phoneNumber });
-
-  if (!user) {
-    throw new HttpError('User not found.', 404);
-  }
-
-  if (!user.isVerified) {
-    throw new HttpError('Account not verified. Please verify your phone number.', 401);
-  }
-
-  if (user.role !== 'student') {
-    throw new HttpError('Only students are allowed to log in.', 403);
-  }
+  if (!user) throw new HttpError('User not found.', 404);
+  if (!user.isVerified) throw new HttpError('Account not verified.', 401);
+  if (user.role !== 'student') throw new HttpError('Access denied.', 403);
 
   const isValid = await user.comparePassword(password);
-  if (!isValid) {
-    throw new HttpError('Invalid credentials.', 401);
-  }
+  if (!isValid) throw new HttpError('Invalid credentials.', 401);
 
   user.lastLogin = Date.now();
   await user.save();
 
-  const accessToken = user.generateAccessToken();
-  const refreshToken = user.generateRefreshToken();
-
   return {
     message: 'Login successful',
-    accessToken,
-    refreshToken,
+    accessToken: user.generateAccessToken(),
+    refreshToken: user.generateRefreshToken()
   };
 };
 
-
-/////////////////////////REFRESH TOKEN  ////////////////////////////////////////////////
+// --------------------------- REFRESH TOKEN ---------------------------
 const refreshAccessTokenService = async (refreshToken) => {
-  if (!refreshToken) throw new HttpError("Refresh token required.", 401);
+  if (!refreshToken) throw new HttpError('Refresh token required.', 401);
 
   const decoded = verifyRefreshToken(refreshToken);
-  if (!decoded) throw new HttpError("Invalid refresh token.", 403);
+  if (!decoded) throw new HttpError('Invalid refresh token.', 403);
 
   const user = await User.findById(decoded.userId);
-  if (!user) throw new HttpError("User not found.", 404);
-  
-  const accessToken = user.generateAccessToken("10m");
-  const newRefreshToken = user.generateRefreshToken();
+  if (!user) throw new HttpError('User not found.', 404);
 
-  return { accessToken, refreshToken: newRefreshToken };
+  return {
+    accessToken: user.generateAccessToken('10m'),
+    refreshToken: user.generateRefreshToken()
+  };
 };
 
-//////////////// GET USER BY ID   /////////////////////////////////////////////////////
+// --------------------------- GET USER DATA ---------------------------
 const getUserDataService = async (accessToken) => {
   const decoded = verifyToken(accessToken);
-  console.log("Decoded UserId:", decoded?.userId);
-
   const user = await User.findOne({ userId: Number(decoded.userId) }).select('-password');
-
-  if (!user) throw new HttpError("User not found.", 404);
+  if (!user) throw new HttpError('User not found.', 404);
 
   return { user: user.toObject({ getters: true }) };
 };
 
-
-////////////////// Request reset OTP  ////////////////////////////////////////////////////
+// --------------------------- REQUEST PASSWORD RESET ---------------------------
 const requestResetService = async (phoneNumber) => {
-  if (!phoneNumber) throw new HttpError("Phone number is required.", 400);
+  if (!phoneNumber) throw new HttpError('Phone number is required.', 422);
 
   const user = await User.findOne({ phoneNumber });
-  if (!user) throw new HttpError("User not found.", 404);
+  if (!user) throw new HttpError('User not found.', 404);
 
   const existingOtp = await Otp.findOne({ number: phoneNumber });
-
-  if (existingOtp) {
-    const timeSinceLastOtp = Date.now() - new Date(existingOtp.createdAt).getTime();
-
-    if (timeSinceLastOtp < 30 * 1000) {
-      throw new HttpError("Please wait before requesting a new OTP.", 429);
-    }
-
-    await Otp.deleteMany({ number: phoneNumber });
+  if (existingOtp && Date.now() - new Date(existingOtp.createdAt).getTime() < 30_000) {
+    throw new HttpError('Please wait before requesting a new OTP.', 429);
   }
+  await Otp.deleteMany({ number: phoneNumber });
 
-  const newOtp = generateOtp();
+  const otp = generateOtp();
+  await Otp.create({ number: phoneNumber, otp });
 
-  await Otp.create({ number: phoneNumber, otp: newOtp });
+  const messageSent = await sendMessage(phoneNumber, otp);
+  if (!messageSent) throw new HttpError('Failed to send OTP.', 503);
 
-  const messageSent = await sendMessage(phoneNumber, newOtp);
-  if (!messageSent) {
-    throw new HttpError("Failed to send OTP.", 503);
-  }
-
-  return { message: "OTP sent for password reset." };
+  return { message: 'OTP sent for password reset.' };
 };
 
-//////////////////  Handle Verify/Resend OTP for Password Reset ////////////////////////
+// --------------------------- VERIFY/RESEND OTP FOR RESET ---------------------------
 const verifyOrResendOtpService = async ({ phoneNumber, otp, action }) => {
-  if (!phoneNumber) throw new HttpError("Phone number is required.", 400);
-  if (!action) throw new HttpError("Action is required.", 400);
+  if (!phoneNumber || !action) throw new HttpError('Phone number and action are required.', 422);
 
   const user = await User.findOne({ phoneNumber });
-  if (!user) throw new HttpError("User not found.", 404);
+  if (!user) throw new HttpError('User not found.', 404);
 
-  if (action === "verify") {
-    if (!otp) throw new HttpError("OTP is required for verification.", 400);
+  if (action === 'verify') {
+    if (!otp) throw new HttpError('OTP is required.', 422);
 
     const otpRecord = await Otp.findOne({ number: phoneNumber, otp });
-    if (!otpRecord) throw new HttpError("Invalid or expired OTP.", 400);
+    if (!otpRecord) throw new HttpError('Invalid or expired OTP.', 403);
 
-    const isExpired = Date.now() - new Date(otpRecord.createdAt).getTime() > 60 * 1000; 
+    const isExpired = Date.now() - new Date(otpRecord.createdAt).getTime() > 60_000;
     if (isExpired) {
       await Otp.deleteMany({ number: phoneNumber });
-      throw new HttpError("OTP expired.", 400);
+      throw new HttpError('OTP expired.', 403);
     }
 
     const resetToken = user.generateResetPasswordToken();
     await Otp.deleteMany({ number: phoneNumber });
 
-    return { message: "OTP verified.", resetToken };
+    return { message: 'OTP verified.', resetToken };
   }
 
-  if (action === "resend") {
+  if (action === 'resend') {
     const existingOtp = await Otp.findOne({ number: phoneNumber });
-    if (existingOtp) {
-      const timeSinceLastOtp = Date.now() - new Date(existingOtp.createdAt).getTime();
-      if (timeSinceLastOtp < 60 * 1000) { 
-        throw new HttpError("Please wait before requesting a new OTP.", 429);
-      }
-
-      await Otp.deleteMany({ number: phoneNumber });
+    if (existingOtp && Date.now() - new Date(existingOtp.createdAt).getTime() < 60_000) {
+      throw new HttpError('Please wait before requesting a new OTP.', 429);
     }
+    await Otp.deleteMany({ number: phoneNumber });
 
     const newOtp = generateOtp();
     await Otp.create({ number: phoneNumber, otp: newOtp });
 
     const messageSent = await sendMessage(phoneNumber, newOtp);
-    if (!messageSent) throw new HttpError("Failed to send OTP.", 503);
+    if (!messageSent) throw new HttpError('Failed to send OTP.', 503);
 
-    return { message: "OTP resent successfully." };
+    return { message: 'OTP resent successfully.' };
   }
 
-  throw new HttpError("Invalid action.", 400);
+  throw new HttpError('Invalid action.', 400);
 };
 
-///////////// RESET PASSWORD ////////////////////////////////////////////////
+// --------------------------- RESET PASSWORD ---------------------------
 const resetPasswordService = async (resetToken, newPassword) => {
-  if (!resetToken || !newPassword) {
-    throw new HttpError("Reset token and new password are required.", 400);
-  }
+  if (!resetToken || !newPassword) throw new HttpError('Reset token and new password are required.', 422);
 
-  const decodedToken = verifyResetPasswordToken(resetToken);
-  if (!decodedToken) {
-    throw new HttpError("Invalid or expired reset token.", 400);
-  }
+  const decoded = verifyResetPasswordToken(resetToken);
+  if (!decoded) throw new HttpError('Invalid or expired reset token.', 403);
 
-  const user = await User.findOne({ phoneNumber: decodedToken.phoneNumber });
-  if (!user) {
-    throw new HttpError("User not found.", 404);
-  }
-
-  user.password = newPassword; 
-  await user.save();
-
-  return { message: "Password updated successfully." };
-};
-
-///////////////////// Change User Password /////////////////////////////////////////////////////
-const changeUserPasswordService = async (accessToken, currentPassword, newPassword) => {
-  if (!currentPassword || !newPassword) {
-    throw new HttpError("Current and new password are required.", 400);
-  }
-
-  const decoded = verifyToken(accessToken);
-  if (!decoded?.userId) throw new HttpError("Invalid access token", 401);
-
-  const user = await User.findById(decoded.id);
-  if (!user) throw new HttpError("User not found.", 404);
-
-  const isValid = await user.comparePassword(currentPassword);
-  if (!isValid) throw new HttpError("Incorrect current password.", 401);
+  const user = await User.findOne({ phoneNumber: decoded.phoneNumber });
+  if (!user) throw new HttpError('User not found.', 404);
 
   user.password = newPassword;
   await user.save();
 
-  return { message: "Password changed successfully." };
+  return { message: 'Password reset successful.' };
 };
 
-/////////// Write Comment //////////////////////////////////
+// --------------------------- CHANGE PASSWORD ---------------------------
+const changeUserPasswordService = async (accessToken, currentPassword, newPassword) => {
+  if (!currentPassword || !newPassword) throw new HttpError('Both current and new password are required.', 422);
+
+  const decoded = verifyToken(accessToken);
+  const user = await User.findById(decoded.id);
+  if (!user) throw new HttpError('User not found.', 404);
+
+  const isValid = await user.comparePassword(currentPassword);
+  if (!isValid) throw new HttpError('Incorrect current password.', 401);
+
+  user.password = newPassword;
+  await user.save();
+
+  return { message: 'Password changed successfully.' };
+};
+
+// --------------------------- WRITE COMMENT ---------------------------
 const writeComment = async (accessToken, lessonId, content) => {
-  try {
-    if (!accessToken) throw new Error('Access token is required');
-    if (!lessonId || !content) throw new Error('Lesson ID and content are required');
+  if (!accessToken || !lessonId || !content) throw new HttpError('All fields are required.', 422);
 
-    const decoded = verifyToken(accessToken);
-    const userId = decoded.userId;
+  const decoded = verifyToken(accessToken);
+  const userId = decoded.userId;
 
-    const comment = await Comment.create({
-      lessonId,
-      userId,
-      content,
-      parentId: null
-    });
-
-    return { success: true, data: comment };
-  } catch (err) {
-    console.error('[writeComment Error]', err);
-    return { success: false, message: err.message };
-  }
+  const comment = await Comment.create({ lessonId, userId, content, parentId: null });
+  return { success: true, data: comment };
 };
 
-/////////////// Reply Comment //////////////////////////
+// --------------------------- REPLY TO COMMENT ---------------------------
 const replyToComment = async (accessToken, lessonId, parentId, content) => {
-  try {
-    if (!accessToken) throw new Error('Access token is required');
-    if (!lessonId || !parentId || !content) throw new Error('Lesson ID, parent ID, and content are required');
+  if (!accessToken || !lessonId || !parentId || !content) throw new HttpError('All fields are required.', 422);
 
-    const decoded = verifyToken(accessToken);
-    const userId = decoded.userId;
+  const decoded = verifyToken(accessToken);
+  const userId = decoded.userId;
 
-    const parent = await Comment.findById(parentId);
-    if (!parent) throw new Error('Parent comment not found');
+  const parent = await Comment.findById(parentId);
+  if (!parent) throw new HttpError('Parent comment not found.', 404);
 
-    const reply = await Comment.create({
-      lessonId,
-      userId,
-      content,
-      parentId
-    });
-
-    return { success: true, data: reply };
-  } catch (err) {
-    console.error('[replyToComment Error]', err);
-    return { success: false, message: err.message };
-  }
+  const reply = await Comment.create({ lessonId, userId, content, parentId });
+  return { success: true, data: reply };
 };
 
 module.exports = {

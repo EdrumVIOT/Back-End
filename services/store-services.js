@@ -6,7 +6,7 @@ const { verifyToken } = require('../utils/verifyToken');
 const createProduct = async (accessToken, productData) => {
   try {
     if (!accessToken) {
-      throw new Error('Access token is required');
+      return { success: false, status: 401, message: 'Access token is required' };
     }
 
     const decoded = verifyToken(accessToken);
@@ -14,20 +14,13 @@ const createProduct = async (accessToken, productData) => {
     const role = decoded.role;
 
     if (!['store', 'admin'].includes(role)) {
-      throw new Error('Unauthorized. Only store or admin can create products.');
+      return { success: false, status: 403, message: 'Unauthorized. Only store or admin can create products.' };
     }
 
-    const {
-      title,
-      description,
-      thumbnail,
-      images,
-      category,
-      price
-    } = productData;
+    const { title, description, thumbnail, images, category, price } = productData;
 
     if (!title || !description || !category || !price) {
-      throw new Error('Missing required fields');
+      return { success: false, status: 400, message: 'Missing required fields' };
     }
 
     const newProduct = await Product.create({
@@ -43,12 +36,13 @@ const createProduct = async (accessToken, productData) => {
 
     return {
       success: true,
+      status: 201,
       message: 'Product created successfully',
       data: newProduct
     };
   } catch (err) {
     console.error('[createProduct Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
 
@@ -56,10 +50,10 @@ const createProduct = async (accessToken, productData) => {
 const getAllProducts = async () => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
-    return { success: true, data: products };
+    return { success: true, status: 200, data: products };
   } catch (err) {
     console.error('[getAllProducts Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
 
@@ -67,11 +61,11 @@ const getAllProducts = async () => {
 const getProductById = async (productId) => {
   try {
     const product = await Product.findById(productId);
-    if (!product) throw new Error('Product not found');
-    return { success: true, data: product };
+    if (!product) return { success: false, status: 404, message: 'Product not found' };
+    return { success: true, status: 200, data: product };
   } catch (err) {
     console.error('[getProductById Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
 
@@ -83,7 +77,7 @@ const updateProduct = async (accessToken, productId, updateData) => {
     const role = decoded.role;
 
     if (!['store', 'admin'].includes(role)) {
-      throw new Error('Unauthorized. Only store or admin can update products.');
+      return { success: false, status: 403, message: 'Unauthorized. Only store or admin can update products.' };
     }
 
     const query = role === 'admin'
@@ -91,18 +85,17 @@ const updateProduct = async (accessToken, productId, updateData) => {
       : { _id: productId, ownerId: userId };
 
     const product = await Product.findOne(query);
-    if (!product) throw new Error('Product not found or unauthorized');
+    if (!product) return { success: false, status: 404, message: 'Product not found or unauthorized' };
 
     Object.assign(product, updateData);
     await product.save();
 
-    return { success: true, data: product };
+    return { success: true, status: 200, data: product };
   } catch (err) {
     console.error('[updateProduct Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
-
 
 //////////////////// Delete Product ////////////////////
 const deleteProduct = async (accessToken, productId) => {
@@ -111,7 +104,7 @@ const deleteProduct = async (accessToken, productId) => {
     const { userId, role } = decoded;
 
     if (!['store', 'admin'].includes(role)) {
-      throw new Error('Unauthorized. Only store or admin can delete products.');
+      return { success: false, status: 403, message: 'Unauthorized. Only store or admin can delete products.' };
     }
 
     const query = role === 'admin'
@@ -119,26 +112,25 @@ const deleteProduct = async (accessToken, productId) => {
       : { _id: productId, ownerId: userId };
 
     const deleted = await Product.findOneAndDelete(query);
-    if (!deleted) throw new Error('Product not found or unauthorized');
+    if (!deleted) return { success: false, status: 404, message: 'Product not found or unauthorized' };
 
-    return { success: true, message: 'Product deleted successfully' };
+    return { success: true, status: 200, message: 'Product deleted successfully' };
   } catch (err) {
     console.error('[deleteProduct Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
-
 
 //////////// Add item to Cart ///////////////////////////
 const addItemToCart = async (accessToken, productId, quantity = 1) => {
   try {
-    if (!accessToken) throw new Error('Access token is required');
+    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
 
     const decoded = verifyToken(accessToken);
     const userId = decoded.userId;
 
     const product = await Product.findById(productId);
-    if (!product) throw new Error('Product not found');
+    if (!product) return { success: false, status: 404, message: 'Product not found' };
 
     let cart = await Cart.findOne({ userId });
 
@@ -164,20 +156,20 @@ const addItemToCart = async (accessToken, productId, quantity = 1) => {
 
     return {
       success: true,
+      status: 200,
       message: 'Product added to cart',
       data: cart
     };
   } catch (err) {
     console.error('[addProductToCart Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
-
 
 ////////// Get Cart //////////////////////////////
 const getCart = async (accessToken) => {
   try {
-    if (!accessToken) throw new Error('Access token is required');
+    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
 
     const decoded = verifyToken(accessToken);
     const userId = decoded.userId;
@@ -185,26 +177,26 @@ const getCart = async (accessToken) => {
     const cart = await Cart.findOne({ userId }).populate('items.productId');
 
     if (!cart) {
-      return { success: true, message: 'Cart is empty', data: [] };
+      return { success: true, status: 200, message: 'Cart is empty', data: [] };
     }
 
-    return { success: true, data: cart };
+    return { success: true, status: 200, data: cart };
   } catch (err) {
     console.error('[getCart Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
 
 //////////////////// Remove Item from Cart ////////////////////
 const removeItemFromCart = async (accessToken, productId) => {
   try {
-    if (!accessToken) throw new Error('Access token is required');
+    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
 
     const decoded = verifyToken(accessToken);
     const userId = decoded.userId;
 
     const cart = await Cart.findOne({ userId });
-    if (!cart) throw new Error('Cart not found');
+    if (!cart) return { success: false, status: 404, message: 'Cart not found' };
 
     const originalLength = cart.items.length;
     cart.items = cart.items.filter(
@@ -212,7 +204,7 @@ const removeItemFromCart = async (accessToken, productId) => {
     );
 
     if (cart.items.length === originalLength) {
-      throw new Error('Product not found in cart');
+      return { success: false, status: 404, message: 'Product not found in cart' };
     }
 
     cart.updatedAt = new Date();
@@ -220,25 +212,26 @@ const removeItemFromCart = async (accessToken, productId) => {
 
     return {
       success: true,
+      status: 200,
       message: 'Product removed from cart',
       data: cart
     };
   } catch (err) {
     console.error('[removeItemFromCart Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
 
 //////////////////// Clear Cart ////////////////////
 const clearCart = async (accessToken) => {
   try {
-    if (!accessToken) throw new Error('Access token is required');
+    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
 
     const decoded = verifyToken(accessToken);
     const userId = decoded.userId;
 
     const cart = await Cart.findOne({ userId });
-    if (!cart) throw new Error('Cart not found');
+    if (!cart) return { success: false, status: 404, message: 'Cart not found' };
 
     cart.items = [];
     cart.updatedAt = new Date();
@@ -246,12 +239,13 @@ const clearCart = async (accessToken) => {
 
     return {
       success: true,
+      status: 200,
       message: 'Cart cleared successfully',
       data: cart
     };
   } catch (err) {
     console.error('[clearCart Error]', err);
-    return { success: false, message: err.message };
+    return { success: false, status: 503, message: err.message };
   }
 };
 
@@ -265,5 +259,4 @@ module.exports = {
   removeItemFromCart,
   clearCart,
   getCart
-
 };

@@ -1,33 +1,29 @@
 const Course = require('../models/course-model');
 const Lesson = require('../models/lesson-model');
 const CourseEnrollment = require('../models/course-enroll-model');
-const LessonViews = require('../models/lesson-view-model')
-const Booking = require('../models/booking-model')
+const LessonViews = require('../models/lesson-view-model');
+const Booking = require('../models/booking-model');
+const Meeting = require('../models/meeting-model');
+const Rating = require('../models/rating-model');
 const { verifyToken } = require("../utils/verifyToken");
+const HttpError = require('../middleware/http-error');
 
-
+// Get enrolled courses with their lessons
 const getStudentCoursesWithLessons = async (accessToken) => {
   try {
-    if (!accessToken) {
-      throw new Error('Access token missing');
-    }
+    if (!accessToken) throw new HttpError('Access token missing', 401);
 
-    const decoded = verifyToken(accessToken);
-    const studentUserId = decoded.userId; 
+    const { userId } = verifyToken(accessToken);
 
-    const enrollments = await CourseEnrollment.find({ studentUserId });
+    const enrollments = await CourseEnrollment.find({ studentUserId: userId });
     const courseIds = enrollments.map(e => e.courseId);
 
     const courses = await Course.find({ _id: { $in: courseIds } });
-
     const lessons = await Lesson.find({ courseId: { $in: courseIds } });
 
     const courseMap = {};
     courses.forEach(course => {
-      courseMap[course._id] = {
-        course,
-        lessons: []
-      };
+      courseMap[course._id] = { course, lessons: [] };
     });
 
     lessons.forEach(lesson => {
@@ -39,25 +35,20 @@ const getStudentCoursesWithLessons = async (accessToken) => {
     return { success: true, data: Object.values(courseMap) };
 
   } catch (err) {
-    console.error(err);
-    throw new Error(err.message || 'Server error');
+    console.error('[getStudentCoursesWithLessons]', err);
+    throw new HttpError(err.message || 'Failed to get enrolled courses', 503);
   }
 };
-/////////////////// Get Enrolled Courses ////////////////////
 
-
+// Get all courses with their lessons
 const getAllCoursesWithLessons = async () => {
   try {
     const courses = await Course.find().lean();
     const lessons = await Lesson.find().lean();
 
     const courseMap = {};
-
     courses.forEach(course => {
-      courseMap[course._id.toString()] = {
-        course,
-        lessons: []
-      };
+      courseMap[course._id.toString()] = { course, lessons: [] };
     });
 
     lessons.forEach(lesson => {
@@ -70,141 +61,99 @@ const getAllCoursesWithLessons = async () => {
     return { success: true, data: Object.values(courseMap) };
   } catch (err) {
     console.error('[getAllCoursesWithLessons Error]', err);
-    throw new Error('Failed to fetch courses with lessons.');
+    throw new HttpError('Failed to fetch courses with lessons.', 503);
   }
 };
 
-///////////////// Get All Cources /////////////////////////
-
-
+// Rate a lesson
 const rateLesson = async (accessToken, lessonId, ratingValue) => {
   try {
-    if (!accessToken) {
-      throw new Error('Access token is required');
-    }
+    if (!accessToken) throw new HttpError('Access token required', 401);
+    if (!lessonId || typeof ratingValue !== 'number') throw new HttpError('Invalid input', 422);
+    if (ratingValue < 1 || ratingValue > 5) throw new HttpError('Rating must be 1-5', 422);
 
-    if (!lessonId || typeof ratingValue !== 'number') {
-      throw new Error('Lesson ID and numeric rating are required');
-    }
-
-    if (ratingValue < 1 || ratingValue > 5) {
-      throw new Error('Rating must be between 1 and 5');
-    }
-
-    const decoded = verifyToken(accessToken);
-    const userId = decoded.userId; 
+    const { userId } = verifyToken(accessToken);
 
     const existingRating = await Rating.findOne({ lessonId, userId });
-
     let result;
+
     if (existingRating) {
       existingRating.rating = ratingValue;
       result = await existingRating.save();
     } else {
-      result = await Rating.create({
-        lessonId,
-        userId,
-        rating: ratingValue,
-      });
+      result = await Rating.create({ lessonId, userId, rating: ratingValue });
     }
 
     return { success: true, data: result };
-    
   } catch (err) {
     console.error('[rateLesson Error]', err);
-    return { success: false, message: err.message || 'Server error' };
+    throw new HttpError(err.message || 'Failed to rate lesson', 503);
   }
 };
 
-
-//////////// View Log //////////////////////////////////////////
+// Log lesson view
 const logLessonView = async ({ accessToken, lessonId, progress, completed }) => {
   try {
-    if (!accessToken) {
-      throw new HttpError('Access token is required', 401);
-    }
+    if (!accessToken) throw new HttpError('Access token is required', 401);
 
     const decoded = verifyToken(accessToken);
-
-    if (decoded.role !== 'student') {
-      console.warn(`[logLessonView] Skipped logging for non-student (role: ${decoded.role})`);
-      return { success: true, data: null, skipped: true };
-    }
+    if (decoded.role !== 'student') return { success: true, data: null, skipped: true };
 
     if (!lessonId || typeof progress !== 'number') {
       throw new HttpError('Lesson ID and progress are required', 422);
     }
 
     const lessonExists = await Lesson.findById(lessonId);
-    if (!lessonExists) {
-      throw new HttpError('Lesson not found', 404);
-    }
+    if (!lessonExists) throw new HttpError('Lesson not found', 404);
 
-    const existingLog = await LessonViews.findOne({
-      studentUserId: decoded.userId,
-      lessonId,
-    });
-
-    const updateData = {
-      watchedAt: new Date(),
-      progress,
-      completed: !!completed,
-    };
+    const existingLog = await LessonViews.findOne({ studentUserId: decoded.userId, lessonId });
+    const updateData = { watchedAt: new Date(), progress, completed: !!completed };
 
     let savedLog;
     if (existingLog) {
       existingLog.set(updateData);
       savedLog = await existingLog.save();
     } else {
-      const newLog = new LessonViews({
-        studentUserId: decoded.userId,
-        lessonId,
-        ...updateData,
-      });
-      savedLog = await newLog.save();
+      savedLog = await LessonViews.create({ studentUserId: decoded.userId, lessonId, ...updateData });
     }
 
     return { success: true, data: savedLog };
   } catch (err) {
     console.error('[logLessonView error]', err);
-    return { success: false, error: err.message };
+    throw new HttpError(err.message || 'Failed to log view', 503);
   }
 };
 
-
-///////////// Booking meeting /////////////////////////
+// Book meeting
 const bookMeeting = async ({ accessToken, meetingId, method }) => {
-  if (!accessToken) throw new HttpError('Access token required', 401);
+  try {
+    if (!accessToken) throw new HttpError('Access token required', 401);
 
-  const decoded = verifyToken(accessToken);
+    const decoded = verifyToken(accessToken);
+    if (decoded.role !== 'student') throw new HttpError('Only students can book meetings', 403);
 
-  if (decoded.role !== 'student') {
-    throw new HttpError('Only students can book meetings', 403);
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) throw new HttpError('Meeting not found', 404);
+
+    const booking = await Booking.create({
+      meetingId,
+      studentId: decoded.userId,
+      method,
+      status: 'pending',
+      paidAt: new Date(),
+    });
+
+    return { success: true, data: booking };
+  } catch (err) {
+    console.error('[bookMeeting error]', err);
+    throw new HttpError(err.message || 'Failed to book meeting', 503);
   }
-
-  const meeting = await Meeting.findById(meetingId);
-  if (!meeting) {
-    throw new HttpError('Meeting not found', 404);
-  }
-
-  const booking = new Booking({
-    meetingId,
-    studentId: decoded.userId,
-    method,
-    status: 'pending',
-    paidAt: new Date(),
-  });
-
-  const savedBooking = await booking.save();
-
-  return { success: true, data: savedBooking };
 };
 
-
-
-module.exports = { getStudentCoursesWithLessons,
-                   getAllCoursesWithLessons, 
-                   rateLesson,
-                   logLessonView,
-                   bookMeeting,
-                  };
+module.exports = {
+  getStudentCoursesWithLessons,
+  getAllCoursesWithLessons,
+  rateLesson,
+  logLessonView,
+  bookMeeting,
+};

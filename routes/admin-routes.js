@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin-controllers');
 
-
 router.post('/adminLogin', adminController.adminLogin); 
 router.post('/create', adminController.createNewUser); 
 router.get('/dashboardInfo',  adminController.getAdminDashboardStats); 
