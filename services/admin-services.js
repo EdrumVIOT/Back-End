@@ -235,6 +235,47 @@ const getAdminLatestStats = async (accessToken) => {
 };
 
 
+/////// GET COURSE DATA ////////////////////
+const getAllCourseStats = async (accessToken) => {
+  const decoded = verifyToken(accessToken);
+  if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
+
+  try {
+    const courses = await Course.find()
+      .populate('teacherId', 'firstName lastName')
+      .populate('students.studentId', 'createdAt');
+
+    const result = courses.map(course => {
+      const totalStudents = course.students?.length || 0;
+      const totalRevenue = totalStudents * (parseFloat(course.price) || 0);
+      const ratings = course.rating || [];
+      const avgRating = ratings.length > 0
+        ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(2)
+        : 'N/A';
+
+      const latestStudent = course.students?.sort((a, b) => {
+        return new Date(b.enrolledAt || b.createdAt) - new Date(a.enrolledAt || a.createdAt);
+      })[0];
+
+      return {
+        courseId: course._id,
+        name: course.name,
+        level: course.level || 'N/A',
+        teacher: course.teacherId ? `${course.teacherId.firstName} ${course.teacherId.lastName}` : 'N/A',
+        totalRevenue,
+        avgRating,
+        totalStudents,
+        latestUpdate: latestStudent?.enrolledAt || course.updatedAt || course.createdAt
+      };
+    });
+
+    return { success: true, data: result };
+  } catch (err) {
+    throw new HttpError(err.message || 'Failed to load course stats', 503);
+  }
+};
+
+
 module.exports = {
   adminLogin,
   createUser,
@@ -243,4 +284,5 @@ module.exports = {
   deleteUser,
   getTeacherStats,
   getAdminLatestStats,
+  getAllCourseStats
 };

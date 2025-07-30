@@ -201,7 +201,7 @@ const getTeacherStats = async (req, res, next) => {
 const getAdminLatestStats = async (req, res, next) => {
   /*
     #swagger.tags = ['Admin']
-    #swagger.summary = 'Get teacher statistics'
+    #swagger.summary = 'Get dashboard statistics'
     #swagger.parameters['Authorization'] = {
       in: 'header',
       required: true,
@@ -216,7 +216,32 @@ const getAdminLatestStats = async (req, res, next) => {
     const result = await adminServices.getAdminLatestStats(token);
     res.status(200).json(result);
   } catch (err) {
-    console.error('[Teacher Stats Error]', err.message || err);
+    console.error('[Dashboard Stats Error]', err.message || err);
+    next(err);
+  }
+};
+
+
+///////// GET ALL COURSE STAT //////////////////////////
+const getAllCourseStats = async (req, res, next) => {
+  /*
+    #swagger.tags = ['Admin']
+    #swagger.summary = 'Get course statistics'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      example: 'Bearer your_access_token_here'
+    }
+  */
+  try {
+    console.log('[Get Course Stats]');
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access token missing' });
+    const result = await adminServices.getAllCourseStats(token);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('[Course Stats Error]', err.message || err);
     next(err);
   }
 };
@@ -228,5 +253,6 @@ module.exports = {
   updateUserInfo,
   deleteUserById,
   getTeacherStats,
-  getAdminLatestStats
+  getAdminLatestStats,
+  getAllCourseStats
 };

@@ -9,5 +9,6 @@ router.put('/user/update', adminController.updateUserInfo);
 router.delete('/user/delete', adminController.deleteUserById); 
 router.get('/getTeacherStat', adminController.getTeacherStats); 
 router.get('/getAdminLatestStats', adminController.getAdminLatestStats); 
+router.get('/getAllCourseStats', adminController.getAllCourseStats); 
 
 module.exports = router;
