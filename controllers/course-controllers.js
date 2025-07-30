@@ -1,4 +1,4 @@
-const { createLesson, createCourse: createCourseService } = require('../services/course-services');
+const Course = require('../services/course-services');
 
 //////////// Create Course //////////////////////////////
 const createCourse = async (req, res) => {
@@ -12,40 +12,19 @@ const createCourse = async (req, res) => {
       description: 'Bearer access token',
       example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
     }
-    #swagger.requestBody = {
+    #swagger.parameters['body'] = {
+      in: 'body',
       required: true,
-      content: {
-        "application/json": {
-          schema: {
-            title: "CreateCourseRequest",
-            required: ["title", "price"],
-            properties: {
-              title: { type: "string", example: "Beginner Piano Course" },
-              description: { type: "string", example: "Learn piano from scratch." },
-              level: { type: "string", example: "beginner" },
-              category: { type: "string", example: "music" },
-              price: { type: "number", example: 49.99 }
-            }
-          }
-        }
+      schema: {
+        title: "Beginner Piano Course",
+        description: "Learn piano from scratch.",
+        level: "beginner",
+        category: "music",
+        price: 49.99
       }
     }
-    #swagger.responses[201] = {
-      description: 'Course successfully created'
-    }
-    #swagger.responses[401] = {
-      description: 'Unauthorized - access token missing or invalid'
-    }
-    #swagger.responses[403] = {
-      description: 'Forbidden - not allowed to create course'
-    }
-    #swagger.responses[422] = {
-      description: 'Validation error - missing or invalid input'
-    }
-    #swagger.responses[503] = {
-      description: 'Service unavailable or internal failure'
-    }
   */
+
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
     if (!accessToken) {
@@ -58,7 +37,7 @@ const createCourse = async (req, res) => {
       return res.status(422).json({ error: 'Title and price are required and must be valid' });
     }
 
-    const result = await createCourseService({
+    const result = await Course.createCourse({
       accessToken,
       title,
       description,
@@ -83,6 +62,7 @@ const createCourse = async (req, res) => {
 };
 
 //////////// Upload Lesson /////////////////////////////
+
 const uploadLesson = async (req, res) => {
   /*
     #swagger.tags = ['Lesson']
@@ -101,6 +81,12 @@ const uploadLesson = async (req, res) => {
       required: true,
       description: 'Video file to upload'
     }
+    #swagger.parameters['thumbnail'] = {
+      in: 'formData',
+      type: 'file',
+      required: false,
+      description: 'Optional thumbnail image file'
+    }
     #swagger.parameters['courseId'] = {
       in: 'formData',
       type: 'string',
@@ -115,38 +101,31 @@ const uploadLesson = async (req, res) => {
       description: 'Video duration in seconds',
       example: 360
     }
-    #swagger.parameters['thumbnailUrl'] = {
-      in: 'formData',
-      type: 'string',
-      required: false,
-      description: 'Optional URL of the lesson thumbnail',
-      example: 'https://example.com/thumb.jpg'
-    }
-
   */
+
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
     if (!accessToken) {
       return res.status(401).json({ error: 'Access token is missing' });
     }
 
-    const { courseId, duration, thumbnailUrl } = req.body;
+    const { courseId, duration } = req.body;
 
-    if (!req.file) {
+    if (!req.files?.video) {
       return res.status(422).json({ error: 'Video file is required' });
     }
 
-    if (!courseId || !duration) {
-      return res.status(422).json({ error: 'courseId and duration are required' });
-    }
+    const videoFile = req.files.video[0];
+    const thumbnailFile = req.files.thumbnail?.[0];
 
-    const result = await createLesson({
+    const result = await Course.createLesson({
       accessToken,
       courseId,
       duration: Number(duration),
-      thumbnailUrl,
-      filePath: req.file.path,
-      filename: req.file.filename,
+      filePath: videoFile.path,
+      filename: videoFile.filename,
+      thumbnailPath: thumbnailFile?.path,
+      thumbnailFilename: thumbnailFile?.filename,
     });
 
     if (result.success) {
@@ -164,7 +143,56 @@ const uploadLesson = async (req, res) => {
   }
 };
 
+
+
+////// Log Views //////////////////
+const viewLesson = async (req, res) => {
+    /*
+    #swagger.tags = ['Course']
+    #swagger.summary = 'Create a new course (admin or teacher only)'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer access token',
+      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+      lessonId: " ",
+      progress: " ",
+      completed: " "
+      }
+    }
+  */
+
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const { lessonId, progress, completed } = req.body;
+
+    const result = await Course.logLessonView({
+      accessToken,
+      lessonId,
+      progress,
+      completed,
+    });
+
+    if (result.success) {
+      return res.status(200).json({ log: result.data });
+    }
+
+    return res.status(400).json({ error: result.error });
+  } catch (err) {
+    console.error('[viewLesson controller]', err);
+    return res.status(503).json({ error: 'Service unavailable' });
+  }
+};
+
+
 module.exports = {
   createCourse,
   uploadLesson,
+  viewLesson,
 };
