@@ -186,8 +186,9 @@ const getTeacherStats = async (req, res, next) => {
   */
   try {
     console.log('[Get Teacher Stats]');
-
-    const result = await adminServices.getTeacherStats(req.headers.authorization);
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access token missing' });
+    const result = await adminServices.getTeacherStats(token);
     res.status(200).json(result);
   } catch (err) {
     console.error('[Teacher Stats Error]', err.message || err);
