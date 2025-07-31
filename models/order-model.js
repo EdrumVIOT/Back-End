@@ -16,13 +16,6 @@ const orderSchema = new Schema({
     type: Number,
     required: true,
   },
-  address: {
-    street: String,
-    city: String,
-    state: String,
-    zip: String,
-    country: String,
-  }
 }, { timestamps: true });
 
 module.exports = model('Order', orderSchema);

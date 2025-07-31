@@ -1,7 +1,8 @@
 const User = require('../models/user-model');
 const Course = require('../models/course-model');
 const Product = require('../models/product-model');
-const ProductPayment = require('../models/product-payment-model');
+const Order = require('../models/order-model');
+const Cart = require('../models/cart-model');  
 const HttpError = require('../middleware/http-error');
 const { verifyToken } = require('../utils/verifyToken'); 
 
@@ -36,7 +37,7 @@ const createUser = async (accessToken, userData) => {
   if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
 
   const { firstName, lastName, email, phoneNumber, password, role } = userData;
-  if (!['teacher', 'store'].includes(role)) throw new HttpError('Invalid role.', 400);
+  if (!['teacher'].includes(role)) throw new HttpError('Invalid role.', 400);
 
   const existing = await User.findOne({ $or: [{ email }, { phoneNumber }] });
   if (existing) throw new HttpError('Email or phone already in use.', 400);
@@ -62,15 +63,17 @@ const getAdminDashboardStats = async (accessToken) => {
   }
 
   try {
-    const [totalUsers, totalCourses, totalProducts, teachers, courses, paidPayments] = await Promise.all([
+    const [totalUsers, totalCourses, totalProducts, teachers, courses, shippedOrders] = await Promise.all([
       User.countDocuments(),
       Course.countDocuments(),
       Product.countDocuments(),
       User.find({ role: 'teacher' }),
       Course.find().populate('students'),
-      ProductPayment.find({ status: 'paid' }).populate({
-        path: 'orderId',
-        populate: { path: 'items.productId' },
+      Order.find({ status: 'shipped' }).populate({
+        path: 'cartId',
+        populate: {
+          path: 'items.productId',
+        },
       }),
     ]);
 
@@ -91,15 +94,15 @@ const getAdminDashboardStats = async (accessToken) => {
 
     let currentShopRevenue = 0;
     let lastShopRevenue = 0;
-    paidPayments.forEach((payment) => {
-      const paidDate = new Date(payment.paidAt);
-      const items = payment.orderId?.items || [];
+    shippedOrders.forEach((order) => {
+      const shippedDate = new Date(order.updatedAt || order.createdAt);
+      const items = order.cartId?.items || [];
       const total = items.reduce(
         (sum, item) => sum + ((item.productId?.price || 0) * item.quantity),
         0
       );
-      if (paidDate >= currentMonth) currentShopRevenue += total;
-      else if (paidDate >= lastMonth) lastShopRevenue += total;
+      if (shippedDate >= currentMonth) currentShopRevenue += total;
+      else if (shippedDate >= lastMonth) lastShopRevenue += total;
     });
 
     response.data = {
@@ -129,6 +132,7 @@ const getAdminDashboardStats = async (accessToken) => {
     };
   }
 };
+
 
 
 //////////////////// Update User  ////////////////////
@@ -196,13 +200,18 @@ const getAdminLatestStats = async (accessToken) => {
   if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
 
   try {
-    const [latestTeacher, latestStudent, latestStoreBuyer] = await Promise.all([
+    const [latestTeacher, latestStudent, latestShippedOrder] = await Promise.all([
       User.findOne({ role: 'teacher' }).sort({ createdAt: -1 }),
       User.findOne({ role: 'student' }).sort({ createdAt: -1 }),
-      ProductPayment.find({ status: 'paid' })
-        .sort({ paidAt: -1 })
-        .limit(1)
-        .populate({ path: 'userId', select: 'firstName lastName phoneNumber createdAt' })
+      Order.findOne({ status: 'shipped' })
+        .sort({ updatedAt: -1 })
+        .populate({
+          path: 'cartId',
+          populate: {
+            path: 'userId',
+            select: 'firstName lastName phoneNumber createdAt'
+          }
+        })
     ]);
 
     const result = {
@@ -220,11 +229,11 @@ const getAdminLatestStats = async (accessToken) => {
         createdAt: latestStudent.createdAt
       } : null,
 
-      latestStoreBuyer: latestStoreBuyer.length > 0 ? {
-        id: latestStoreBuyer[0].userId?._id,
-        name: `${latestStoreBuyer[0].userId?.firstName} ${latestStoreBuyer[0].userId?.lastName}`,
-        phoneNumber: latestStoreBuyer[0].userId?.phoneNumber,
-        paidAt: latestStoreBuyer[0].paidAt
+      latestStoreBuyer: latestShippedOrder?.cartId?.userId ? {
+        id: latestShippedOrder.cartId.userId._id,
+        name: `${latestShippedOrder.cartId.userId.firstName} ${latestShippedOrder.cartId.userId.lastName}`,
+        phoneNumber: latestShippedOrder.cartId.userId.phoneNumber,
+        shippedAt: latestShippedOrder.updatedAt
       } : null
     };
 
@@ -233,6 +242,8 @@ const getAdminLatestStats = async (accessToken) => {
     throw new HttpError(err.message || 'Failed to load latest stats', 503);
   }
 };
+
+
 
 
 /////// GET COURSE DATA ////////////////////
