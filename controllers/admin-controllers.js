@@ -98,6 +98,30 @@ const getAdminDashboardStats = async (req, res, next) => {
 };
 
 
+///////////// Get All Orders ///////////////////////////////
+const getAllOrders = async (req, res, next) => {
+  /*
+    #swagger.tags = ['Admin']
+    #swagger.summary = 'Get admin dashboard stats'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      example: 'Bearer your_access_token_here'
+    }
+  */
+  try {
+    console.log('[Admin Dashboard] Request Headers:', req.headers);
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const result = await adminServices.getAllOrders(accessToken);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('[Dashboard Stats Error]', err.message || err);
+    next(err);
+  }
+};
+
+
 /////////////////// Update User /////////////////////
 const updateUserInfo = async (req, res, next) => {
   /*
@@ -254,5 +278,6 @@ module.exports = {
   deleteUserById,
   getTeacherStats,
   getAdminLatestStats,
-  getAllCourseStats
+  getAllCourseStats,
+  getAllOrders
 };

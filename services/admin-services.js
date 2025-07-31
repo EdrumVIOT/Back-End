@@ -151,6 +151,8 @@ const updateUser = async (accessToken, userId, updateData) => {
   return { message: 'User updated', user };
 };
 
+
+///////////// Delete User ////////////////////////////
 const deleteUser = async (accessToken, userId) => {
   const decoded = verifyToken(accessToken);
   if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
@@ -287,6 +289,45 @@ const getAllCourseStats = async (accessToken) => {
 };
 
 
+//////// Get All Orders //////////////////////////////////////
+const getAllOrders = async (accessToken) => {
+  try {
+    if (!accessToken) {
+      return { success: false, status: 401, message: 'Access token is required' };
+    }
+
+    const decoded = verifyToken(accessToken);
+    if (decoded.role !== 'admin') {
+      return { success: false, status: 403, message: 'Admin access required' };
+    }
+
+    const orders = await Order.find()
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'cartId',
+        populate: [
+          {
+            path: 'userId',
+            select: 'name phoneNumber email role'
+          },
+          {
+            path: 'items.productId',
+            select: 'title price thumbnail'
+          }
+        ]
+      });
+
+    return {
+      success: true,
+      status: 200,
+      data: orders
+    };
+  } catch (err) {
+    console.error('[getAllOrdersForAdmin Error]', err);
+    return { success: false, status: 503, message: err.message };
+  }
+};
+
 module.exports = {
   adminLogin,
   createUser,
@@ -295,5 +336,6 @@ module.exports = {
   deleteUser,
   getTeacherStats,
   getAdminLatestStats,
-  getAllCourseStats
+  getAllCourseStats,
+  getAllOrders
 };

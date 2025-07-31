@@ -219,6 +219,56 @@ const clearCart = async (req, res) => {
   return res.status(result.success ? 200 : 400).json(result);
 };
 
+
+////////////////// Make Order ////////////////////////////////
+const makeOrder = async (req, res) => {
+  /*
+    #swagger.tags = ['Cart']
+    #swagger.summary = 'Get user cart'
+    #swagger.description = 'Retrieve all cart items for the logged-in user'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer accessToken'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        cartId: 'string'
+      }
+    }
+  */
+  const accessToken = req.headers.authorization?.split(' ')[1];
+  const { cartId } = req.body;
+  const result = await storeServices.makeOrder(accessToken, cartId);
+
+  return res.status(result.success ? 200 : 400).json(result);
+};
+
+
+////////////////// Get My Order ////////////////////////////////
+const getMyOrders = async (req, res) => {
+  /*
+    #swagger.tags = ['Cart']
+    #swagger.summary = 'Get user cart'
+    #swagger.description = 'Retrieve all cart items for the logged-in user'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer accessToken'
+    }
+  */
+  const accessToken = req.headers.authorization?.split(' ')[1];
+  const result = await storeServices.getMyOrders(accessToken);
+
+  return res.status(result.success ? 200 : 400).json(result);
+};
+
+
+
 module.exports = {
   createProduct,
   getAllProducts,
@@ -229,4 +279,6 @@ module.exports = {
   getCart,
   clearCart,
   removeItemFromCart,
+  makeOrder,
+  getMyOrders,
 };

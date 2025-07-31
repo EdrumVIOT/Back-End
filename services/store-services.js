@@ -1,5 +1,6 @@
 const Product = require('../models/product-model');
 const Cart = require('../models/cart-model');
+const Order = require('../models/order-model');
 const { verifyToken } = require('../utils/verifyToken');
 
 
@@ -259,6 +260,86 @@ const clearCart = async (accessToken) => {
 };
 
 
+////////////// Make Order ///////////////////////////////////
+const createOrder = async (accessToken, cartId = null) => {
+  try {
+    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
+
+    const decoded = verifyToken(accessToken);
+    const userId = decoded.userId;
+
+    let cart;
+    if (cartId) {
+      cart = await Cart.findOne({ _id: cartId, userId }).populate('items.productId');
+    } else {
+      cart = await Cart.findOne({ userId }).populate('items.productId');
+    }
+
+    if (!cart || cart.items.length === 0) {
+      return { success: false, status: 400, message: 'Cart is empty' };
+    }
+
+    const totalAmount = cart.items.reduce((sum, item) => {
+      return sum + (item.productId?.price || 0) * item.quantity;
+    }, 0);
+
+    const newOrder = await Order.create({
+      cartId: cart._id,
+      status: 'pending',
+      totalAmount
+    });
+
+    return {
+      success: true,
+      status: 200,
+      message: 'Order created successfully',
+      data: {
+        orderId: newOrder._id,
+        cartId: cart._id,
+        totalAmount
+      }
+    };
+  } catch (err) {
+    console.error('[createOrder Error]', err);
+    return { success: false, status: 503, message: err.message };
+  }
+};
+
+
+////////// Get Orders //////////////////////////////////////////////
+const getMyOrders = async (accessToken) => {
+  try {
+    if (!accessToken) {
+      return { success: false, status: 401, message: 'Access token is required' };
+    }
+
+    const decoded = verifyToken(accessToken);
+    const userId = decoded.userId;
+
+
+    const carts = await Cart.find({ userId });
+    const cartIds = carts.map(c => c._id);
+
+    const orders = await Order.find({ cartId: { $in: cartIds } })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'cartId',
+        populate: { path: 'items.productId', select: 'title price thumbnail' }
+      });
+
+    return {
+      success: true,
+      status: 200,
+      data: orders
+    };
+  } catch (err) {
+    console.error('[getMyOrders Error]', err);
+    return { success: false, status: 503, message: err.message };
+  }
+};
+
+
+
 
 module.exports = {
   createProduct,
@@ -269,5 +350,7 @@ module.exports = {
   addItemToCart,
   removeItemFromCart,
   clearCart,
-  getCart
+  getCart,
+  createOrder,
+  getMyOrders
 };
