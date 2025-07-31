@@ -136,10 +136,40 @@ const setMeetingTime = async ({ accessToken, date, startTime, endTime, price }) 
   }
 };
 
+
+/////////////////// Change Teacher Password ///////
+const changeTeacherPassword = async ({ accessToken, currentPassword, newPassword }) => {
+  try {
+    if (!accessToken) throw new HttpError('Access token is required', 401);
+    const decoded = verifyToken(accessToken);
+
+    if (decoded.role !== 'teacher') {
+      throw new HttpError('Only teachers can change their password', 403);
+    }
+    const user = await User.findOne({ userId: decoded.userId });
+    if (!user) throw new HttpError('Teacher not found', 404);
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      throw new HttpError('Current password is incorrect', 400);
+    }
+
+    user.password = newPassword;
+
+    await user.save();
+
+    return { success: true, message: 'Password updated successfully' };
+  } catch (err) {
+    console.error('[changeTeacherPassword error]', err);
+    throw new HttpError(err.message || 'Failed to change password', 503);
+  }
+};
+
 module.exports = {
   createCourse,
   createLesson,
   getTeacherCoursesWithLessons,
   getEnrolledStudentsInMyCourses,
   setMeetingTime,
+  changeTeacherPassword
 };

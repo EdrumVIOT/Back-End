@@ -7,6 +7,7 @@ router.post('/createCourse', teacherController.createCourse);
 router.post('/uploadLesson', teacherController.uploadLesson);
 router.post('/getStudents', teacherController.getOwnStudents);
 router.post('/setmeeting', teacherController.setMeeting);
+router.post('/changeTeacherPassword', teacherController.changeTeacherPassword);
 
 
   

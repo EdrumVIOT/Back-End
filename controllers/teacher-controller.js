@@ -199,6 +199,49 @@ const setMeeting = async (req, res) => {
 };
 
 
+//////// Change Teacher Password /////////////
+const changeTeacherPassword = async (req, res) => {
+  /*
+    #swagger.tags = ['Meeting']
+    #swagger.summary = 'Set meeting time (teacher only)'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer access token',
+      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        currentPassword: " ", 
+        newPassword : " "
+      }
+    }
+  */
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const { currentPassword, newPassword  } = req.body;
+
+    const result = await teacherServices.changeTeacherPassword({ accessToken, currentPassword, newPassword });
+
+    if (result.success) return res.status(200).json(result);
+
+    const status = result.error.includes('token')
+      ? 401
+      : result.error.includes('Only teachers')
+        ? 403
+        : 503;
+
+    return res.status(status).json({ success: false, error: result.error });
+  } catch (err) {
+    console.error('[Teacher password change error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
+  }
+};
+
+
 
 module.exports = {
   getOwnCourses,
@@ -206,4 +249,5 @@ module.exports = {
   createCourse,
   uploadLesson,
   setMeeting,
+  changeTeacherPassword
 };
