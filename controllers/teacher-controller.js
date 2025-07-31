@@ -97,65 +97,53 @@ const createCourse = async (req, res) => {
 //////////// Upload Lesson /////////////////////////////
 const uploadLesson = async (req, res) => {
   /*
-    #swagger.tags = ['Lesson']
-    #swagger.summary = 'Upload a lesson video and create lesson (admin or teacher only)'
-    #swagger.consumes = ['multipart/form-data']
-    #swagger.parameters['Authorization'] = {
-      in: 'header',
+  #swagger.tags = ['Lesson']
+  #swagger.summary = 'Create a lesson (admin or teacher only)'
+  #swagger.parameters['Authorization'] = {
+    in: 'header',
+    required: true,
+    type: 'string',
+    description: 'Bearer access token',
+    example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+  }
+  #swagger.parameters['body'] = {
+      in: 'body',
       required: true,
-      type: 'string',
-      description: 'Bearer access token',
-      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+      schema: {
+            courseId: " ",
+            duration: " ",
+            videoUrl: " ",
+            thumbnailUrl: " "
+      }
     }
-    #swagger.parameters['video'] = {
-      in: 'formData',
-      type: 'file',
-      required: true,
-      description: 'Video file to upload'
-    }
-    #swagger.parameters['thumbnail'] = {
-      in: 'formData',
-      type: 'file',
-      required: false,
-      description: 'Optional thumbnail image file'
-    }
-    #swagger.parameters['courseId'] = {
-      in: 'formData',
-      type: 'string',
-      required: true,
-      description: 'ID of the course',
-      example: '64abc12345def67890'
-    }
-    #swagger.parameters['duration'] = {
-      in: 'formData',
-      type: 'integer',
-      required: true,
-      description: 'Video duration in seconds',
-      example: 360
-    }
-  */
+*/
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
-    const { courseId, duration } = req.body;
+    const { courseId, duration, videoUrl, thumbnailUrl } = req.body;
 
-    if (!accessToken) return res.status(401).json({ error: 'Access token is missing' });
-    if (!req.files?.video) return res.status(422).json({ error: 'Video file is required' });
+    if (!accessToken) {
+      return res.status(401).json({ error: 'Access token is missing' });
+    }
 
-    const videoFile = req.files.video[0];
-    const thumbnailFile = req.files.thumbnail?.[0];
+    if (!courseId || !duration || !videoUrl) {
+      return res.status(422).json({ error: 'courseId, duration, and videoUrl are required' });
+    }
 
     const result = await teacherServices.createLesson({
       accessToken,
       courseId,
       duration: Number(duration),
-      filePath: videoFile.path,
-      filename: videoFile.filename,
-      thumbnailPath: thumbnailFile?.path,
-      thumbnailFilename: thumbnailFile?.filename,
+      videoUrl,
+      thumbnailUrl,
     });
 
-    if (result.success) return res.status(201).json({ lesson: result.data });
-    if (result.error === 'Unauthorized') return res.status(403).json({ error: 'Only admin or teacher can upload lessons' });
+    if (result.success) {
+      return res.status(201).json({ lesson: result.data });
+    }
+
+    if (result.error === 'Unauthorized') {
+      return res.status(403).json({ error: 'Only admin or teacher can upload lessons' });
+    }
 
     return res.status(503).json({ error: result.error || 'Service unavailable while uploading lesson' });
   } catch (err) {
@@ -163,6 +151,7 @@ const uploadLesson = async (req, res) => {
     return res.status(503).json({ error: 'Service unavailable: ' + err.message });
   }
 };
+
 
 
 ///////// Set Meeting Time //////////////

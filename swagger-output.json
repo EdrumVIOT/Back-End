@@ -1162,11 +1162,8 @@
         "tags": [
           "Lesson"
         ],
-        "summary": "Upload a lesson video and create lesson (admin or teacher only)",
+        "summary": "Create a lesson (admin or teacher only)",
         "description": "",
-        "consumes": [
-          "multipart/form-data"
-        ],
         "parameters": [
           {
             "name": "Authorization",
@@ -1177,54 +1174,35 @@
             "example": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
           },
           {
-            "name": "video",
-            "in": "formData",
-            "type": "file",
+            "name": "body",
+            "in": "body",
             "required": true,
-            "description": "Video file to upload"
-          },
-          {
-            "name": "thumbnail",
-            "in": "formData",
-            "type": "file",
-            "required": false,
-            "description": "Optional thumbnail image file"
-          },
-          {
-            "name": "courseId",
-            "in": "formData",
-            "type": "string",
-            "required": true,
-            "description": "ID of the course",
-            "example": "64abc12345def67890"
-          },
-          {
-            "name": "duration",
-            "in": "formData",
-            "type": "integer",
-            "required": true,
-            "description": "Video duration in seconds",
-            "example": 360
+            "schema": {
+              "type": "object",
+              "properties": {
+                "courseId": {
+                  "type": "string",
+                  "example": " "
+                },
+                "duration": {
+                  "type": "string",
+                  "example": " "
+                },
+                "videoUrl": {
+                  "type": "string",
+                  "example": " "
+                },
+                "thumbnailUrl": {
+                  "type": "string",
+                  "example": " "
+                }
+              }
+            }
           },
           {
             "name": "authorization",
             "in": "header",
             "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "courseId": {
-                  "example": "any"
-                },
-                "duration": {
-                  "example": "any"
-                }
-              }
-            }
           }
         ],
         "responses": {

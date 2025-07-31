@@ -1,6 +1,3 @@
-const fs = require('fs');
-const { Dropbox } = require('dropbox');
-const fetch = require('node-fetch');
 const Lesson = require('../models/lesson-model');
 const Course = require('../models/course-model');
 const Meeting = require('../models/meeting-model');
@@ -8,13 +5,8 @@ const CourseEnrollment = require('../models/course-enroll-model');
 const User = require('../models/user-model');
 const { verifyToken } = require('../utils/verifyToken');
 const HttpError = require('../middleware/http-error');
-const dbx = new Dropbox({
-  accessToken: process.env.DROPBOX_ACCESS_TOKEN,
-  fetch,
-});
 
-
-// Get Teacher's Courses with Lessons
+/////////////// Get Teacher's Courses with Lessons ////////////////////
 const getTeacherCoursesWithLessons = async (accessToken) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
@@ -42,7 +34,7 @@ const getTeacherCoursesWithLessons = async (accessToken) => {
 };
 
 
-// Create Course
+//////////////////////// Create Course //////////////////////////////////////////////////////////
 const createCourse = async ({ accessToken, title, description, level, category, price }) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
@@ -59,36 +51,39 @@ const createCourse = async ({ accessToken, title, description, level, category, 
 };
 
 
-// Create Lesson
-const createLesson = async ({ accessToken, courseId, filePath, filename, duration, thumbnailPath, thumbnailFilename }) => {
+////////// Create Lesson ////////////////////////////////////////////////////////////////
+const createLesson = async ({ accessToken, courseId, videoUrl, duration, thumbnailUrl }) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
+
     const decoded = verifyToken(accessToken);
-    if (!['teacher', 'admin'].includes(decoded.role)) throw new HttpError('Only teachers or admins can upload lessons', 403);
-
-    const videoContent = fs.readFileSync(filePath);
-    const videoUpload = await dbx.filesUpload({ path: '/' + filename, contents: videoContent, autorename: true });
-    const videoLink = await dbx.sharingCreateSharedLinkWithSettings({ path: videoUpload.result.path_lower });
-    const videoUrl = videoLink.result.url.replace('?dl=0', '?raw=1');
-    fs.unlinkSync(filePath);
-
-    let thumbnailUrl = null;
-    if (thumbnailPath && thumbnailFilename) {
-      const thumbContent = fs.readFileSync(thumbnailPath);
-      const thumbUpload = await dbx.filesUpload({ path: '/' + thumbnailFilename, contents: thumbContent, autorename: true });
-      const thumbLink = await dbx.sharingCreateSharedLinkWithSettings({ path: thumbUpload.result.path_lower });
-      thumbnailUrl = thumbLink.result.url.replace('?dl=0', '?raw=1');
-      fs.unlinkSync(thumbnailPath);
+    if (!['teacher', 'admin'].includes(decoded.role)) {
+      throw new HttpError('Only teachers or admins can upload lessons', 403);
     }
 
-    const lesson = new Lesson({ courseId, videoUrl, thumbnailUrl, duration, views: 0, status: true });
+    if (!videoUrl || !courseId || !duration) {
+      throw new HttpError('Missing required fields', 400);
+    }
+
+    const lesson = new Lesson({
+      courseId,
+      videoUrl,
+      thumbnailUrl: thumbnailUrl || null,
+      duration,
+      views: 0,
+      status: true,
+    });
+
     const savedLesson = await lesson.save();
     return { success: true, data: savedLesson };
+
   } catch (err) {
     console.error('[createLesson error]', err);
     throw new HttpError(err.message || 'Failed to create lesson', 503);
   }
 };
+
+module.exports = { createLesson };
 
 
 // Get Enrolled Students

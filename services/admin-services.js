@@ -5,6 +5,8 @@ const Order = require('../models/order-model');
 const Cart = require('../models/cart-model');  
 const HttpError = require('../middleware/http-error');
 const { verifyToken } = require('../utils/verifyToken'); 
+const CourseEnrollment = require('../models/course-enroll-model'); 
+
 
 
 //////////////////// Admin Login ////////////////////
@@ -63,12 +65,13 @@ const getAdminDashboardStats = async (accessToken) => {
   }
 
   try {
-    const [totalUsers, totalCourses, totalProducts, teachers, courses, shippedOrders] = await Promise.all([
+    const [totalUsers, totalCourses, totalProducts, teachers, courses, enrollments, shippedOrders] = await Promise.all([
       User.countDocuments(),
       Course.countDocuments(),
       Product.countDocuments(),
       User.find({ role: 'teacher' }),
-      Course.find().populate('students'),
+      Course.find(),
+      CourseEnrollment.find().populate('studentId'), // Assuming studentId is a ref to User
       Order.find({ status: 'shipped' }).populate({
         path: 'cartId',
         populate: {
@@ -83,24 +86,27 @@ const getAdminDashboardStats = async (accessToken) => {
 
     let currentCourseRevenue = 0;
     let lastCourseRevenue = 0;
-    courses.forEach((course) => {
-      const price = parseFloat(course.price) || 0;
-      course.students?.forEach((s) => {
-        const enrolled = new Date(s.enrolledAt || course.createdAt);
-        if (enrolled >= currentMonth) currentCourseRevenue += price;
-        else if (enrolled >= lastMonth) lastCourseRevenue += price;
-      });
+
+    enrollments.forEach((enrollment) => {
+      const course = courses.find((c) => c._id.toString() === enrollment.courseId.toString());
+      const price = parseFloat(course?.price || 0);
+      const enrolledDate = new Date(enrollment.createdAt);
+
+      if (enrolledDate >= currentMonth) currentCourseRevenue += price;
+      else if (enrolledDate >= lastMonth) lastCourseRevenue += price;
     });
 
     let currentShopRevenue = 0;
     let lastShopRevenue = 0;
+
     shippedOrders.forEach((order) => {
       const shippedDate = new Date(order.updatedAt || order.createdAt);
       const items = order.cartId?.items || [];
-      const total = items.reduce(
-        (sum, item) => sum + ((item.productId?.price || 0) * item.quantity),
-        0
-      );
+
+      const total = items.reduce((sum, item) => {
+        return sum + ((item.productId?.price || 0) * item.quantity);
+      }, 0);
+
       if (shippedDate >= currentMonth) currentShopRevenue += total;
       else if (shippedDate >= lastMonth) lastShopRevenue += total;
     });
@@ -132,6 +138,9 @@ const getAdminDashboardStats = async (accessToken) => {
     };
   }
 };
+
+module.exports = { getAdminDashboardStats };
+
 
 
 
@@ -254,27 +263,43 @@ const getAllCourseStats = async (accessToken) => {
   if (decoded.role !== 'admin') throw new HttpError('Admin access required.', 403);
 
   try {
-    const courses = await Course.find()
-      .populate('teacherId', 'firstName lastName')
-      .populate('students.studentId', 'createdAt');
+    const courses = await Course.find();
+
+    const teacherUserIds = [...new Set(courses.map(c => c.teacherUserId).filter(Boolean))];
+
+    const teachers = await User.find({ userId: { $in: teacherUserIds } }, 'userId firstName lastName');
+    const teacherMap = {};
+    teachers.forEach(t => {
+      teacherMap[t.userId] = `${t.firstName} ${t.lastName}`;
+    });
+
+    const allStudentIds = courses.flatMap(c => c.students?.map(s => s.studentId) || []);
+    const studentIds = [...new Set(allStudentIds)];
+    const students = await User.find({ userId: { $in: studentIds } }, 'userId createdAt');
+    const studentMap = {};
+    students.forEach(s => {
+      studentMap[s.userId] = s.createdAt;
+    });
 
     const result = courses.map(course => {
       const totalStudents = course.students?.length || 0;
       const totalRevenue = totalStudents * (parseFloat(course.price) || 0);
       const ratings = course.rating || [];
-      const avgRating = ratings.length > 0
+      const avgRating = ratings.length
         ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(2)
         : 'N/A';
 
       const latestStudent = course.students?.sort((a, b) => {
-        return new Date(b.enrolledAt || b.createdAt) - new Date(a.enrolledAt || a.createdAt);
+        const aDate = a.enrolledAt || studentMap[a.studentId] || course.createdAt;
+        const bDate = b.enrolledAt || studentMap[b.studentId] || course.createdAt;
+        return new Date(bDate) - new Date(aDate);
       })[0];
 
       return {
         courseId: course._id,
         name: course.name,
         level: course.level || 'N/A',
-        teacher: course.teacherId ? `${course.teacherId.firstName} ${course.teacherId.lastName}` : 'N/A',
+        teacher: teacherMap[course.teacherUserId] || 'N/A',
         totalRevenue,
         avgRating,
         totalStudents,
