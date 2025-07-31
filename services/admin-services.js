@@ -328,6 +328,41 @@ const getAllOrders = async (accessToken) => {
   }
 };
 
+
+////////////////////// Update Order Status //////////////////////////
+const updateOrderStatus = async (accessToken, orderId, newStatus) => {
+  const allowedStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+
+  if (!orderId || !newStatus) {
+    throw new HttpError('Order ID and new status are required.', 400);
+  }
+
+  if (!allowedStatuses.includes(newStatus)) {
+    throw new HttpError('Invalid order status.', 400);
+  }
+
+  const decoded = verifyToken(accessToken);
+  if (decoded.role !== 'admin') {
+    throw new HttpError('Admin access required.', 403);
+  }
+
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new HttpError('Order not found.', 404);
+  }
+
+  order.status = newStatus;
+  await order.save();
+
+  return {
+    success: true,
+    message: `Order status updated to '${newStatus}'`,
+    order,
+  };
+};
+
+
+
 module.exports = {
   adminLogin,
   createUser,
@@ -337,5 +372,6 @@ module.exports = {
   getTeacherStats,
   getAdminLatestStats,
   getAllCourseStats,
-  getAllOrders
+  getAllOrders,
+  updateOrderStatus
 };

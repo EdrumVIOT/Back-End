@@ -58,6 +58,8 @@ const createNewUser = async (req, res, next) => {
     }
   */
   try {
+
+    const accessToken = req.headers.authorization?.split(' ')[1];
     console.log('[Create User] Body:', req.body);
 
     const { firstName, lastName, phoneNumber, email, password, role } = req.body;
@@ -65,7 +67,7 @@ const createNewUser = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'All fields are required' });
     }
 
-    const result = await adminServices.createUser(req.headers.authorization, req.body);
+    const result = await adminServices.createUser(accessToken, req.body);
     res.status(201).json(result);
   } catch (err) {
     console.error('[Create User Error]', err.message || err);
@@ -116,7 +118,7 @@ const getAllOrders = async (req, res, next) => {
     const result = await adminServices.getAllOrders(accessToken);
     res.status(200).json(result);
   } catch (err) {
-    console.error('[Dashboard Stats Error]', err.message || err);
+    console.error('[Get All Order Error]', err.message || err);
     next(err);
   }
 };
@@ -240,7 +242,7 @@ const getAdminLatestStats = async (req, res, next) => {
     const result = await adminServices.getAdminLatestStats(token);
     res.status(200).json(result);
   } catch (err) {
-    console.error('[Dashboard Stats Error]', err.message || err);
+    console.error('[Latest Stats Error]', err.message || err);
     next(err);
   }
 };
@@ -270,6 +272,46 @@ const getAllCourseStats = async (req, res, next) => {
   }
 };
 
+
+/////////////// Update Order Status /////////////////////////////
+const updateOrderStatus = async (req, res, next) => {
+  /*
+    #swagger.tags = ['Admin']
+    #swagger.summary = 'Create new user'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      example: 'Bearer your_access_token_here'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        orderId: "string",
+        newStatus: "string"
+      }
+    }
+  */
+  try {
+
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    console.log('[Create User] Body:', req.body);
+
+    const { orderId , newStatus} = req.body;
+    if ( !orderId || !newStatus) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
+    }
+
+    const result = await adminServices.updateOrderStatus(accessToken, req.body);
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('[Update Status Error]', err.message || err);
+    next(err);
+  }
+};
+
+
 module.exports = {
   adminLogin,
   createNewUser,
@@ -279,5 +321,6 @@ module.exports = {
   getTeacherStats,
   getAdminLatestStats,
   getAllCourseStats,
-  getAllOrders
+  getAllOrders,
+  updateOrderStatus
 };
