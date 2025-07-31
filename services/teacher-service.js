@@ -57,7 +57,7 @@ const createLesson = async ({ accessToken, courseId, videoUrl, duration, thumbna
     if (!accessToken) throw new HttpError('Access token is required', 401);
 
     const decoded = verifyToken(accessToken);
-    if (!['teacher', 'admin'].includes(decoded.role)) {
+    if (decoded.role !== "teacher" || decoded.role !== "admin") {
       throw new HttpError('Only teachers or admins can upload lessons', 403);
     }
 
@@ -82,8 +82,6 @@ const createLesson = async ({ accessToken, courseId, videoUrl, duration, thumbna
     throw new HttpError(err.message || 'Failed to create lesson', 503);
   }
 };
-
-module.exports = { createLesson };
 
 
 // Get Enrolled Students
@@ -142,6 +140,7 @@ const changeTeacherPassword = async ({ accessToken, currentPassword, newPassword
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
     const decoded = verifyToken(accessToken);
+    console.log("Decoded teacher ", decoded )
 
     if (decoded.role !== 'teacher') {
       throw new HttpError('Only teachers can change their password', 403);
@@ -149,7 +148,7 @@ const changeTeacherPassword = async ({ accessToken, currentPassword, newPassword
     const user = await User.findOne({ userId: decoded.userId });
     if (!user) throw new HttpError('Teacher not found', 404);
 
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       throw new HttpError('Current password is incorrect', 400);
     }

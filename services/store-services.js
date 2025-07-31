@@ -14,10 +14,16 @@ const createProduct = async (accessToken, productData) => {
     const decoded = verifyToken(accessToken);
     const ownerId = decoded.userId;
     const role = decoded.role;
+    console.log("Decoded ",decoded)
 
-    if (!['admin'].includes(role)) {
-      return { success: false, status: 403, message: 'Unauthorized. Only store or admin can create products.' };
-    }
+    if (role !== "admin") {
+        return {
+          success: false,
+          status: 403,
+          message: 'Unauthorized. Only admin can create products.'
+        };
+      }
+
 
     const { title, description, thumbnail, images, category, price } = productData;
 
@@ -81,7 +87,7 @@ const updateProduct = async (accessToken, productId, updateData) => {
     const userId = decoded.userId;
     const role = decoded.role;
 
-    if (!['admin'].includes(role)) {
+    if (role !== "admin") {
       return { success: false, status: 403, message: 'Unauthorized. Only store or admin can update products.' };
     }
 
