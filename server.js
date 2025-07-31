@@ -13,7 +13,7 @@ const studentRoutes = require('./routes/student-routes');
 const teacherRoutes = require('./routes/teacher-routes');
 const storeRoutes = require('./routes/store-routes');
 
-dotenv.config({ path: './config/.env' });
+dotenv.config({ path: './config/config.env' });
 
 const app = express();
 const PORT = process.env.PORT;
