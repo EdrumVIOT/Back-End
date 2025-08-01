@@ -15,6 +15,7 @@ const getEnrolledCourses = async (req, res, next) => {
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const result = await studentServices.getStudentCoursesWithLessons(accessToken);
     res.status(200).json(result);
   } catch (err) {
@@ -63,7 +64,9 @@ const rateLessonController = async (req, res, next) => {
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const { lessonId, rating } = req.body;
+    if (!lessonId || !rating) return res.status(401).json({ error: 'All fields required' });
 
     if (!lessonId || typeof rating !== 'number') {
       return res.status(400).json({ error: 'lessonId and numeric rating are required' });
@@ -102,8 +105,8 @@ const viewLesson = async (req, res, next) => {
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const { lessonId, progress, completed } = req.body;
-
     if (!lessonId || typeof progress !== 'number' || typeof completed !== 'boolean') {
       return res.status(400).json({ error: 'lessonId, numeric progress, and boolean completed are required' });
     }
@@ -152,8 +155,8 @@ const bookMeeting = async (req, res, next) => {
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
-    const { meetingId, method } = req.body;
-
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
+    const { meetingId, method } = req.body
     if (!meetingId || !method) {
       return res.status(400).json({ error: 'meetingId and method are required' });
     }

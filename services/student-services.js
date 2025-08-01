@@ -8,7 +8,8 @@ const Rating = require('../models/rating-model');
 const { verifyToken } = require("../utils/verifyToken");
 const HttpError = require('../middleware/http-error');
 
-// Get enrolled courses with their lessons
+
+/////////  Get enrolled courses with their lessons ///////////
 const getStudentCoursesWithLessons = async (accessToken) => {
   try {
     if (!accessToken) throw new HttpError('Access token missing', 401);
@@ -40,7 +41,8 @@ const getStudentCoursesWithLessons = async (accessToken) => {
   }
 };
 
-// Get all courses with their lessons
+
+////////// Get all courses with their lessons /////////////////////////
 const getAllCoursesWithLessons = async () => {
   try {
     const courses = await Course.find().lean();
@@ -65,7 +67,8 @@ const getAllCoursesWithLessons = async () => {
   }
 };
 
-// Rate a lesson
+
+///////  Rate a lesson ////////////////////////////////////////////
 const rateLesson = async (accessToken, lessonId, ratingValue) => {
   try {
     if (!accessToken) throw new HttpError('Access token required', 401);
@@ -91,7 +94,8 @@ const rateLesson = async (accessToken, lessonId, ratingValue) => {
   }
 };
 
-// Log lesson view
+
+////// Log lesson view ////////////////////////////////////////////////////////
 const logLessonView = async ({ accessToken, lessonId, progress, completed }) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
@@ -124,7 +128,8 @@ const logLessonView = async ({ accessToken, lessonId, progress, completed }) => 
   }
 };
 
-// Book meeting
+
+//////////////////// Book meeting ///////////////////////////////////
 const bookMeeting = async ({ accessToken, meetingId, method }) => {
   try {
     if (!accessToken) throw new HttpError('Access token required', 401);
@@ -149,6 +154,8 @@ const bookMeeting = async ({ accessToken, meetingId, method }) => {
     throw new HttpError(err.message || 'Failed to book meeting', 503);
   }
 };
+
+
 
 module.exports = {
   getStudentCoursesWithLessons,

@@ -16,6 +16,7 @@ const getOwnCourses = async (req, res, next) => {
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const result = await teacherServices.getTeacherCoursesWithLessons(accessToken);
     return res.status(200).json(result);
   } catch (err) {
@@ -39,6 +40,7 @@ const getOwnStudents = async (req, res, next) => {
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const result = await teacherServices.getEnrolledStudentsInMyCourses(accessToken);
     return res.status(200).json(result);
   } catch (err) {
@@ -179,6 +181,7 @@ const setMeeting = async (req, res) => {
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const { date, startTime, endTime, price } = req.body;
 
     const result = await teacherServices.setMeetingTime({ accessToken, date, startTime, endTime, price });
@@ -222,6 +225,7 @@ const changeTeacherPassword = async (req, res) => {
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const { currentPassword, newPassword  } = req.body;
 
     const result = await teacherServices.changeTeacherPassword({ accessToken, currentPassword, newPassword });

@@ -6,6 +6,8 @@ const User = require('../models/user-model');
 const { verifyToken } = require('../utils/verifyToken');
 const HttpError = require('../middleware/http-error');
 
+
+
 /////////////// Get Teacher's Courses with Lessons ////////////////////
 const getTeacherCoursesWithLessons = async (accessToken) => {
   try {
@@ -163,6 +165,8 @@ const changeTeacherPassword = async ({ accessToken, currentPassword, newPassword
     throw new HttpError(err.message || 'Failed to change password', 503);
   }
 };
+
+
 
 module.exports = {
   createCourse,

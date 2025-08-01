@@ -26,8 +26,9 @@ const createProduct = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const productData = req.body;
-
+  if (!productData) return res.status(401).json({ error: 'Product data missing' });
   const result = await storeServices.createProduct(accessToken, productData);
   return res.status(result.success ? 201 : 400).json(result);
 };
@@ -58,7 +59,7 @@ const getProductById = async (req, res) => {
     }
   */
   const { productId } = req.body;
-
+  if (!productId) return res.status(401).json({ error: 'Product id missing' });
   const result = await storeServices.getProductById(productId);
   return res.status(result.success ? 200 : 404).json(result);
 };
@@ -90,7 +91,9 @@ const updateProduct = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const { productId, ...updateData } = req.body;
+  if (!productId || !updateData) return res.status(401).json({ error: 'All fields required' });
 
   const result = await storeServices.updateProduct(accessToken, productId, updateData);
   return res.status(result.success ? 200 : 400).json(result);
@@ -117,7 +120,10 @@ const deleteProduct = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const { productId } = req.body;
+  if (!productId) return res.status(401).json({ error: 'Product id missing' });
+
 
   const result = await storeServices.deleteProduct(accessToken, productId);
   return res.status(result.success ? 200 : 400).json(result);
@@ -146,7 +152,11 @@ const addItemToCart = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const { productId, quantity } = req.body;
+  if (!productId || !quantity) return res.status(401).json({ error: 'All fields required' });
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
+  
 
   const result = await storeServices.addItemToCart(accessToken, productId, quantity);
   return res.status(result.success ? 200 : 400).json(result);
@@ -167,6 +177,7 @@ const getCart = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const result = await storeServices.getCart(accessToken);
 
   return res.status(result.success ? 200 : 400).json(result);
@@ -194,7 +205,9 @@ const removeItemFromCart = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const { productId } = req.body;
+  if (!productId) return res.status(401).json({ error: 'Product id missing' });
 
   const result = await storeServices.removeItemFromCart(accessToken, productId);
   return res.status(result.success ? 200 : 400).json(result);
@@ -215,6 +228,7 @@ const clearCart = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const result = await storeServices.clearCart(accessToken);
   return res.status(result.success ? 200 : 400).json(result);
 };
@@ -241,7 +255,9 @@ const makeOrder = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const { cartId } = req.body;
+  if (!cartId) return res.status(401).json({ error: 'Cart id missing' });
   const result = await storeServices.makeOrder(accessToken, cartId);
 
   return res.status(result.success ? 200 : 400).json(result);
@@ -262,6 +278,7 @@ const getMyOrders = async (req, res) => {
     }
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const result = await storeServices.getMyOrders(accessToken);
 
   return res.status(result.success ? 200 : 400).json(result);

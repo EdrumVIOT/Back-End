@@ -86,7 +86,7 @@ const handleSignupOtpService = async ({ phoneNumber, otp, action }) => {
   throw new HttpError('Invalid action type.', 400);
 };
 
-// --------------------------- LOGIN ---------------------------
+// /////////////////  LOGIN ////////////////////////////////////
 const loginService = async ({ phoneNumber, password }) => {
   if (!phoneNumber || !password) throw new HttpError('Phone number and password required.', 422);
 

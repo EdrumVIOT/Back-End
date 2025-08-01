@@ -91,6 +91,7 @@ const getAdminDashboardStats = async (req, res, next) => {
   try {
     console.log('[Admin Dashboard] Request Headers:', req.headers);
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const result = await adminServices.getAdminDashboardStats(accessToken);
     res.status(200).json(result);
   } catch (err) {
@@ -115,6 +116,7 @@ const getAllOrders = async (req, res, next) => {
   try {
     console.log('[Admin Dashboard] Request Headers:', req.headers);
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const result = await adminServices.getAllOrders(accessToken);
     res.status(200).json(result);
   } catch (err) {
@@ -184,12 +186,14 @@ const deleteUserById = async (req, res, next) => {
     }
   */
   try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const { userId } = req.body;
     if (!userId) {
       return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
-    const result = await adminServices.deleteUser(req.headers.authorization, userId);
+    const result = await adminServices.deleteUser(accessToken, userId);
     res.status(200).json(result);
   } catch (err) {
     console.error('[Delete User Error]', err.message || err);
@@ -212,9 +216,9 @@ const getTeacherStats = async (req, res, next) => {
   */
   try {
     console.log('[Get Teacher Stats]');
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Access token missing' });
-    const result = await adminServices.getTeacherStats(token);
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
+    const result = await adminServices.getTeacherStats(accessToken);
     res.status(200).json(result);
   } catch (err) {
     console.error('[Teacher Stats Error]', err.message || err);
@@ -296,6 +300,7 @@ const updateOrderStatus = async (req, res, next) => {
   try {
 
     const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     console.log('[Create User] Body:', req.body);
 
     const { orderId , newStatus} = req.body;
