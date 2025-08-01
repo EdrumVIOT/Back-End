@@ -1092,6 +1092,20 @@
             "description": "Bearer accessToken"
           },
           {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "courseId": {
+                  "type": "string",
+                  "example": " "
+                }
+              }
+            }
+          },
+          {
             "name": "authorization",
             "in": "header",
             "type": "string"
@@ -1103,6 +1117,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
           },
           "503": {
             "description": "Service Unavailable"

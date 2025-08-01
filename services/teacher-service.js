@@ -8,32 +8,43 @@ const HttpError = require('../middleware/http-error');
 
 
 
-/////////////// Get Teacher's Courses with Lessons ////////////////////
-const getTeacherCoursesWithLessons = async (accessToken) => {
+/////////////// Get Teacher's Courses ////////////////////
+const getOwnCourses = async (accessToken) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
     const decoded = verifyToken(accessToken);
     if (decoded.role !== 'teacher') throw new HttpError('Only teachers can access their own courses', 403);
 
     const courses = await Course.find({ teacherId: decoded.userId });
-    const courseIds = courses.map(course => course._id);
-    const lessons = await Lesson.find({ courseId: { $in: courseIds } });
-
-    const courseMap = {};
-    courses.forEach(course => {
-      courseMap[course._id.toString()] = { course, lessons: [] };
-    });
-    lessons.forEach(lesson => {
-      const courseId = lesson.courseId?.toString();
-      if (courseMap[courseId]) courseMap[courseId].lessons.push(lesson);
-    });
-
-    return { success: true, data: Object.values(courseMap) };
+    return { success: true, data: courses };
   } catch (err) {
-    console.error('[getTeacherCoursesWithLessons Error]', err);
-    throw new HttpError(err.message || 'Failed to get courses', 503);
+    console.error('[getOwnCourses Error]', err);
+    throw new HttpError(err.message || 'Failed to get teacher courses', 503);
   }
 };
+
+
+//////////// Get Lessons /////////////////////////////////////////////////////
+const getLessonsByCourseId = async (accessToken, courseId) => {
+  try {
+    if (!accessToken) throw new HttpError('Access token is required', 401);
+    if (!courseId) throw new HttpError('Course ID is required', 400);
+    
+    const decoded = verifyToken(accessToken);
+    if (decoded.role !== 'teacher') throw new HttpError('Only teachers can access course lessons', 403);
+
+    // Optional: Verify that this course belongs to the teacher
+    const course = await Course.findOne({ _id: courseId, teacherId: decoded.userId });
+    if (!course) throw new HttpError('Course not found or not owned by you', 404);
+
+    const lessons = await Lesson.find({ courseId });
+    return { success: true, data: { course, lessons } };
+  } catch (err) {
+    console.error('[getLessonsByCourseId Error]', err);
+    throw new HttpError(err.message || 'Failed to get lessons', 503);
+  }
+};
+
 
 
 //////////////////////// Create Course //////////////////////////////////////////////////////////
@@ -86,7 +97,7 @@ const createLesson = async ({ accessToken, courseId, videoUrl, duration, thumbna
 };
 
 
-// Get Enrolled Students
+/////////// Get Enrolled Students ///////////////////////////////
 const getEnrolledStudentsInMyCourses = async (accessToken) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
@@ -120,7 +131,7 @@ const getEnrolledStudentsInMyCourses = async (accessToken) => {
 };
 
 
-// Set Meeting Time
+///////////////// Set Meeting Time //////////////////////////////////////////////
 const setMeetingTime = async ({ accessToken, date, startTime, endTime, price }) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
@@ -137,7 +148,7 @@ const setMeetingTime = async ({ accessToken, date, startTime, endTime, price }) 
 };
 
 
-/////////////////// Change Teacher Password ///////
+/////////////////// Change Teacher Password ///////////////////////////////////////////
 const changeTeacherPassword = async ({ accessToken, currentPassword, newPassword }) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
@@ -171,7 +182,8 @@ const changeTeacherPassword = async ({ accessToken, currentPassword, newPassword
 module.exports = {
   createCourse,
   createLesson,
-  getTeacherCoursesWithLessons,
+  getOwnCourses,
+  getLessonsByCourseId,
   getEnrolledStudentsInMyCourses,
   setMeetingTime,
   changeTeacherPassword

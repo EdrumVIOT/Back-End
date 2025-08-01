@@ -1,7 +1,8 @@
 const storeServices = require('../services/store-services');
 
-/////////// Product Controllers ///////////
 
+
+/////////// Product Controllers ///////////
 const createProduct = async (req, res) => {
   /*
     #swagger.tags = ['Products']
@@ -34,7 +35,7 @@ const createProduct = async (req, res) => {
 };
 
 
-
+/////////// Get All Products ///////////////
 const getAllProducts = async (req, res) => {
   /*
     #swagger.tags = ['Products']
@@ -45,7 +46,7 @@ const getAllProducts = async (req, res) => {
 };
 
 
-
+/////////// Get Product By Id ///////////////////
 const getProductById = async (req, res) => {
   /*
     #swagger.tags = ['Products']
@@ -65,7 +66,7 @@ const getProductById = async (req, res) => {
 };
 
 
-
+/////////// Update Product /////////////////
 const updateProduct = async (req, res) => {
   /*
     #swagger.tags = ['Products']
@@ -93,14 +94,14 @@ const updateProduct = async (req, res) => {
   const accessToken = req.headers.authorization?.split(' ')[1];
   if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const { productId, ...updateData } = req.body;
-  if (!productId || !updateData) return res.status(401).json({ error: 'All fields required' });
+  if (!productId || Object.keys(updateData).length === 0) return res.status(401).json({ error: 'All fields required' });
 
   const result = await storeServices.updateProduct(accessToken, productId, updateData);
   return res.status(result.success ? 200 : 400).json(result);
 };
 
 
-
+///////// Delete Product //////////////////
 const deleteProduct = async (req, res) => {
   /*
     #swagger.tags = ['Products']
@@ -129,8 +130,8 @@ const deleteProduct = async (req, res) => {
   return res.status(result.success ? 200 : 400).json(result);
 };
 
-/////////// Cart Controllers ///////////
 
+/////////// Cart Controllers ///////////
 const addItemToCart = async (req, res) => {
   /*
     #swagger.tags = ['Cart']
@@ -163,7 +164,7 @@ const addItemToCart = async (req, res) => {
 };
 
 
-
+/////// Get Cart ////////////////////////
 const getCart = async (req, res) => {
   /*
     #swagger.tags = ['Cart']
@@ -184,7 +185,7 @@ const getCart = async (req, res) => {
 };
 
 
-
+////////// Remove Item From Cart ////////////////
 const removeItemFromCart = async (req, res) => {
   /*
     #swagger.tags = ['Cart']
@@ -214,7 +215,7 @@ const removeItemFromCart = async (req, res) => {
 };
 
 
-
+////////// Clear Cart ///////////////////
 const clearCart = async (req, res) => {
   /*
     #swagger.tags = ['Cart']

@@ -17,10 +17,46 @@ const getOwnCourses = async (req, res, next) => {
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
     if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
-    const result = await teacherServices.getTeacherCoursesWithLessons(accessToken);
+    const result = await teacherServices.getOwnCourses(accessToken);
     return res.status(200).json(result);
   } catch (err) {
     console.error('[getOwnCourses error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
+  }
+};
+
+
+//////////// Get Own Courses' lesson ////////////////////////////
+const getLessonsByCourseId = async (req, res, next) => {
+  /*
+    #swagger.tags = ['Course']
+    #swagger.summary = 'Get teacher\'s own courses'
+    #swagger.description = 'Returns all courses and lessons created by the logged-in teacher'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer accessToken'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        courseId: " "
+      }
+    }
+  */
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
+
+    const courseId = req.body
+    if (!courseId) { return res.status(422).json({ error: 'Course id missing' });
+  }
+    const result = await teacherServices.getLessonsByCourseId(accessToken , courseId);
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[getLessonsByCourseId error]', err);
     return res.status(503).json({ error: 'Service unavailable: ' + err.message });
   }
 };
@@ -249,6 +285,7 @@ const changeTeacherPassword = async (req, res) => {
 
 module.exports = {
   getOwnCourses,
+  getLessonsByCourseId,
   getOwnStudents,
   createCourse,
   uploadLesson,
