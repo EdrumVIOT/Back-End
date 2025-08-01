@@ -17,7 +17,7 @@ const adminLogin = async (req, res, next) => {
     }
   */
   try {
-    console.log('[Admin Login] Incoming request:', req.body);
+    // console.log('[Admin Login] Incoming request:', req.body);
 
     const { phoneNumber, password } = req.body;
     if (!phoneNumber || !password) {
@@ -89,7 +89,7 @@ const getAdminDashboardStats = async (req, res, next) => {
     }
   */
   try {
-    console.log('[Admin Dashboard] Request Headers:', req.headers);
+    // console.log('[Admin Dashboard] Request Headers:', req.headers);
     const accessToken = req.headers.authorization?.split(' ')[1];
     if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const result = await adminServices.getAdminDashboardStats(accessToken);
@@ -114,7 +114,7 @@ const getAllOrders = async (req, res, next) => {
     }
   */
   try {
-    console.log('[Admin Dashboard] Request Headers:', req.headers);
+    // console.log('[Admin Dashboard] Request Headers:', req.headers);
     const accessToken = req.headers.authorization?.split(' ')[1];
     if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const result = await adminServices.getAllOrders(accessToken);
@@ -151,7 +151,7 @@ const updateUserInfo = async (req, res, next) => {
     }
   */
   try {
-    console.log('[Update User] Body:', req.body);
+    // console.log('[Update User] Body:', req.body);
 
     if (!req.body.userId) {
       return res.status(400).json({ success: false, message: 'User ID is required' });
@@ -215,7 +215,7 @@ const getTeacherStats = async (req, res, next) => {
     }
   */
   try {
-    console.log('[Get Teacher Stats]');
+    // console.log('[Get Teacher Stats]');
     const accessToken = req.headers.authorization?.split(' ')[1];
     if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
     const result = await adminServices.getTeacherStats(accessToken);
@@ -240,7 +240,7 @@ const getAdminLatestStats = async (req, res, next) => {
     }
   */
   try {
-    console.log('[Get Latest Stats]');
+    // console.log('[Get Latest Stats]');
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Access token missing' });
     const result = await adminServices.getAdminLatestStats(token);
@@ -265,7 +265,7 @@ const getAllCourseStats = async (req, res, next) => {
     }
   */
   try {
-    console.log('[Get Course Stats]');
+    // console.log('[Get Course Stats]');
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Access token missing' });
     const result = await adminServices.getAllCourseStats(token);

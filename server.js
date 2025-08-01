@@ -16,7 +16,8 @@ const storeRoutes = require('./routes/store-routes');
 dotenv.config({ path: './config/config.env' });
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000 ;
+const HOST = process.env.HOST || 'localhost';
 
 
 db.connectToMongoDB?.(); 
@@ -51,6 +52,6 @@ app.use((error, req, res, next) => {
 });
 
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Server running at http://${HOST}:${PORT}`);
 });

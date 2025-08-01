@@ -1,4 +1,5 @@
 const storeServices = require('../services/store-services');
+const { verifyToken } = require('../utils/verifyToken'); 
 
 
 
@@ -28,6 +29,8 @@ const createProduct = async (req, res) => {
   */
   const accessToken = req.headers.authorization?.split(' ')[1];
   if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
+  // const decoded = verifyToken(accessToken)
+  // console.log("Create product token " , decoded.role)
   const productData = req.body;
   if (!productData) return res.status(401).json({ error: 'Product data missing' });
   const result = await storeServices.createProduct(accessToken, productData);
