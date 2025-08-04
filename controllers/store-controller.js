@@ -348,7 +348,7 @@ const getMyOrders = async (req, res) => {
 
 
 ///////// Guest order OTP /////////////////////////
-const requestOtpController = async (req, res) => {
+const requestOtp = async (req, res) => {
     /*
     #swagger.tags = ['Cart']
     #swagger.summary = 'Guest Order OTP'
@@ -378,7 +378,7 @@ const requestOtpController = async (req, res) => {
 
 
 ////// Verify Guest Order ////////////////////////////
-const verifyOrderController = async (req, res) => {
+const verifyOrder = async (req, res) => {
     /*
     #swagger.tags = ['Cart']
     #swagger.summary = 'Verify Guest Order'
@@ -426,6 +426,6 @@ module.exports = {
   makeOrder,
   getMyOrders,
   assignGuestCartToUser,
-  requestOtpController,
-  verifyOrderController,
+  requestOtp,
+  verifyOrder,
 };

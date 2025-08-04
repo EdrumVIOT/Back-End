@@ -16,5 +16,7 @@ router.delete('/removeItemFromCart', storeController.removeItemFromCart);
 router.delete('/clearCart', storeController.clearCart); 
 router.post('/makeOrder', storeController.makeOrder); 
 router.post('/getMyOrders', storeController.getMyOrders); 
+router.post('/guestOrderReq', storeController.requestOtp); 
+router.post('/verifyGuestOrder', storeController.verifyOrder); 
 
 module.exports = router;
