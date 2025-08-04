@@ -2235,6 +2235,78 @@
           }
         }
       }
+    },
+    "/store/guestOrderReq": {
+      "post": {
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Guest Order OTP",
+        "description": "Guest Order OTP",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "phoneNumber": {
+                  "type": "string",
+                  "example": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/store/verifyGuestOrder": {
+      "post": {
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Verify Guest Order",
+        "description": "Verify Guest Order",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "phoneNumber": {
+                  "type": "string",
+                  "example": " "
+                },
+                "otp": {
+                  "type": "string",
+                  "example": " "
+                },
+                "cartId": {
+                  "type": "string",
+                  "example": " "
+                },
+                "action": {
+                  "type": "string",
+                  "example": " "
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   }
 }

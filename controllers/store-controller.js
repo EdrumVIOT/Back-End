@@ -388,9 +388,9 @@ const verifyOrder = async (req, res) => {
       required: true,
       schema: {
         phoneNumber: " ",
-        otp: : " ",
+        otp: " ",
         cartId: " ",
-        action: " "
+        action: " ",
       }
     }
   */
