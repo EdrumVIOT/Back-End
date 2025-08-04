@@ -1,6 +1,8 @@
 const Product = require('../models/product-model');
 const Cart = require('../models/cart-model');
 const Order = require('../models/order-model');
+const Otp = require('../models/otp-model');
+const { sendMessage } = require("../utils/messageSender");
 const { verifyToken } = require('../utils/verifyToken');
 const mongoose = require("mongoose");
 
@@ -136,48 +138,33 @@ const deleteProduct = async (accessToken, productId) => {
 
 
 //////////// Add item to Cart ///////////////////////////
-const addItemToCart = async ({ productId, quantity = 1, accessToken = null, cartId = null }) => {
+const addItemToCart = async ({ productId, quantity = 1, cartId = null }) => {
   try {
     const product = await Product.findById(productId);
     if (!product) {
       return { success: false, status: 404, message: 'Product not found' };
     }
 
-    let userId = null;
-    if (accessToken) {
-      try {
-        const decoded = verifyToken(accessToken);
-        userId = decoded.userId;
-      } catch (err) {
-        console.warn('[addItemToCart] Invalid accessToken:', err.message);
-      }
-    }
-
-    let cart;
-
-    if (userId) {
-      cart = await Cart.findOne({ userId });
-    } else if (cartId && mongoose.Types.ObjectId.isValid(cartId)) {
+    let cart = null;
+    if (cartId && mongoose.Types.ObjectId.isValid(cartId)) {
       cart = await Cart.findById(cartId);
     }
 
     if (!cart) {
-      // Create new cart
       cart = new Cart({
-        userId: userId || undefined,
-        cart: [{ productId, quantity }],
+        items: [{ productId, quantity }],
       });
     } else {
-      if (!Array.isArray(cart.cart)) cart.cart = [];
+      if (!Array.isArray(cart.items)) cart.items = [];
 
-      const existingItem = cart.cart.find(
-        (item) => item.productId.toString() === productId
+      const existingItem = cart.items.find(
+        (item) => item.productId.toString() === productId.toString()
       );
 
       if (existingItem) {
         existingItem.quantity += quantity;
       } else {
-        cart.cart.push({ productId, quantity });
+        cart.items.push({ productId, quantity });
       }
     }
 
@@ -196,7 +183,6 @@ const addItemToCart = async ({ productId, quantity = 1, accessToken = null, cart
     return { success: false, status: 503, message: err.message };
   }
 };
-
 
 /////////// Assign user to cart /////////////////
 const assignGuestCartToUser = async ({ accessToken, cartId }) => {
@@ -217,7 +203,7 @@ const assignGuestCartToUser = async ({ accessToken, cartId }) => {
 
     if (userCart) {
       for (const guestItem of guestCart.cart) {
-        const existingItem = userCart.cart.find(
+        const existingItem = userCart.items.find(
           (item) => item.productId.toString() === guestItem.productId.toString()
         );
 
@@ -451,6 +437,111 @@ const createOrder = async (accessToken, cartId = null) => {
 };
 
 
+/////////// Guest order req //////////////////////////////////////////
+const requestGuestOtp = async (phoneNumber) => {
+  if (!phoneNumber) throw new HttpError('Phone number is required.', 400);
+
+  const existingOtp = await Otp.findOne({ number: phoneNumber }).sort({ createdAt: -1 });
+
+  if (existingOtp && Date.now() - new Date(existingOtp.createdAt).getTime() < 60_000) {
+    throw new HttpError('Please wait before requesting a new OTP.', 429);
+  }
+
+  await Otp.deleteMany({ number: phoneNumber });
+
+  const otp = generateOtp();
+  await Otp.create({ number: phoneNumber, otp });
+
+  const messageSent = await sendMessage(phoneNumber, otp);
+  if (!messageSent) throw new HttpError('Failed to send OTP.', 503);
+
+  return {
+    success: true,
+    status: 200,
+    message: 'OTP sent successfully to phone number',
+  };
+};
+
+
+////////// Verify Order ///////////////////////////////////
+const verifyGuestOrder = async ({ phoneNumber, otp, cartId, action }) => {
+  if (!phoneNumber) {
+    return { success: false, status: 400, message: 'Phone number is required' };
+  }
+
+  if (action === 'resend') {
+    const existingOtp = await Otp.findOne({ number: phoneNumber }).sort({ createdAt: -1 });
+
+    if (existingOtp && Date.now() - new Date(existingOtp.createdAt).getTime() < 60_000) {
+      return { success: false, status: 429, message: 'Please wait before requesting a new OTP' };
+    }
+
+    await Otp.deleteMany({ number: phoneNumber });
+
+    const newOtp = generateOtp();
+    await Otp.create({ number: phoneNumber, otp: newOtp });
+
+    const sent = await sendMessage(phoneNumber, newOtp);
+    if (!sent) {
+      return { success: false, status: 503, message: 'Failed to send OTP' };
+    }
+
+    return { success: true, status: 200, message: 'OTP resent successfully' };
+  }
+
+  if (action === 'verify') {
+    if (!otp || !cartId) {
+      return { success: false, status: 400, message: 'OTP and cartId are required' };
+    }
+
+    const record = await Otp.findOne({ number: phoneNumber, otp }).sort({ createdAt: -1 });
+
+    if (!record) {
+      return { success: false, status: 401, message: 'Invalid OTP' };
+    }
+
+    const isExpired = Date.now() - new Date(record.createdAt).getTime() > 60_000;
+    if (isExpired) {
+      await Otp.deleteMany({ number: phoneNumber });
+      return { success: false, status: 403, message: 'OTP expired' };
+    }
+
+    const cart = await Cart.findById(cartId).populate('items.productId');
+    if (!cart || cart.items.length === 0) {
+      return { success: false, status: 400, message: 'Cart is empty or not found' };
+    }
+
+    const totalAmount = cart.items.reduce((sum, item) => {
+      return sum + (item.productId?.price || 0) * item.quantity;
+    }, 0);
+
+    const newOrder = await Order.create({
+      cartId,
+      guest: true,
+      phoneNumber,
+      totalAmount,
+      status: 'pending',
+    });
+
+    await Otp.deleteMany({ number: phoneNumber });
+
+    return {
+      success: true,
+      status: 200,
+      message: 'Guest order created successfully',
+      data: {
+        orderId: newOrder._id,
+        totalAmount,
+      },
+    };
+  }
+
+  return { success: false, status: 400, message: 'Invalid action type' };
+};
+
+
+
+
 ////////// Get Orders //////////////////////////////////////////////
 const getMyOrders = async (accessToken) => {
   try {
@@ -498,5 +589,7 @@ module.exports = {
   getCart,
   createOrder,
   getMyOrders,
-  assignGuestCartToUser
+  assignGuestCartToUser,
+  requestGuestOtp,
+  verifyGuestOrder
 };

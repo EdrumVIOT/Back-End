@@ -140,12 +140,6 @@ const addItemToCart = async (req, res) => {
     #swagger.tags = ['Cart']
     #swagger.summary = 'Add item to cart'
     #swagger.description = 'Add a product to the user\'s or guest cart. Requires either accessToken (for logged-in users) or cartId (for guests).'
-    #swagger.parameters['Authorization'] = {
-      in: 'header',
-      required: false,
-      type: 'string',
-      description: 'Bearer accessToken (for logged-in users)'
-    }
     #swagger.parameters['body'] = {
       in: 'body',
       required: true,
@@ -158,7 +152,6 @@ const addItemToCart = async (req, res) => {
   */
 
   try {
-    const accessToken = req.headers.authorization?.split(' ')[1] || null;
     const { productId, quantity = 1, cartId = null } = req.body;
 
     if (!productId || quantity <= 0) {
@@ -168,7 +161,6 @@ const addItemToCart = async (req, res) => {
     const result = await storeServices.addItemToCart({
       productId,
       quantity,
-      accessToken,
       cartId
     });
 
@@ -355,6 +347,71 @@ const getMyOrders = async (req, res) => {
 };
 
 
+///////// Guest order OTP /////////////////////////
+const requestOtpController = async (req, res) => {
+    /*
+    #swagger.tags = ['Cart']
+    #swagger.summary = 'Guest Order OTP'
+    #swagger.description = 'Guest Order OTP'
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        phoneNumber: 'string'
+      }
+    }
+  */
+  try {
+    const { phoneNumber } = req.body;
+
+    const result = await requestGuestOtp(phoneNumber);
+
+    res.status(result.status).json(result);
+  } catch (error) {
+    console.error('[requestOtpController Error]', error);
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Internal Server Error',
+    });
+  }
+};
+
+
+////// Verify Guest Order ////////////////////////////
+const verifyOrderController = async (req, res) => {
+    /*
+    #swagger.tags = ['Cart']
+    #swagger.summary = 'Verify Guest Order'
+    #swagger.description = 'Verify Guest Order'
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        phoneNumber: " ",
+        otp: : " ",
+        cartId: " ",
+        action: " "
+      }
+    }
+  */
+  try {
+    const { phoneNumber, otp, cartId, action } = req.body;
+
+    const result = await verifyGuestOrder({ phoneNumber, otp, cartId, action });
+
+    res.status(result.status).json(result);
+  } catch (error) {
+    console.error('[verifyOrderController Error]', error);
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Internal Server Error',
+    });
+  }
+};
+
+
+
+
 
 module.exports = {
   createProduct,
@@ -369,4 +426,6 @@ module.exports = {
   makeOrder,
   getMyOrders,
   assignGuestCartToUser,
+  requestOtpController,
+  verifyOrderController,
 };

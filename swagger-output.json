@@ -1951,13 +1951,6 @@
         "description": "Add a product to the user\\'s or guest cart. Requires either accessToken (for logged-in users) or cartId (for guests).",
         "parameters": [
           {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "type": "string",
-            "description": "Bearer accessToken (for logged-in users)"
-          },
-          {
             "name": "body",
             "in": "body",
             "required": true,
@@ -1978,11 +1971,6 @@
                 }
               }
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "type": "string"
           }
         ],
         "responses": {

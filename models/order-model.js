@@ -10,7 +10,15 @@ const orderSchema = new Schema({
   userId: {
     type: Number,
     ref: 'User',
-    required: true,
+    required: false, 
+  },
+  phoneNumber: {
+    type: String,
+    required: false, 
+  },
+  guest: {
+    type: Boolean,
+    default: false,
   },
   status: {
     type: String,
