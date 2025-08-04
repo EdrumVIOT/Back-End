@@ -10,6 +10,7 @@ router.put('/updateProduct', storeController.updateProduct);
 router.delete('/deleteProduct', storeController.deleteProduct); 
 // ---------- Cart Routes ----------
 router.post('/addItemToCart', storeController.addItemToCart);
+router.post('/assignGuestCartToUser', storeController.assignGuestCartToUser);
 router.get('/getCart', storeController.getCart);
 router.delete('/removeItemFromCart', storeController.removeItemFromCart); 
 router.delete('/clearCart', storeController.clearCart); 

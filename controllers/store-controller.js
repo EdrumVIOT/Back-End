@@ -180,6 +180,38 @@ const addItemToCart = async (req, res) => {
 };
 
 
+///////// Assign user to cart ////////////
+const assignGuestCartToUser = async (req, res) => {
+  /*
+    #swagger.tags = ['Cart']
+    #swagger.summary = 'Assign guest cart to logged-in user'
+    #swagger.description = 'Merge or assign guest cart items to the user\'s cart after login'
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        userId: 'number',
+        cartId: 'string'
+      }
+    }
+  */
+  try {
+    const { userId, cartId } = req.body;
+
+    if (!userId || !cartId) {
+      return res.status(400).json({ success: false, message: 'userId and cartId are required' });
+    }
+
+    const result = await storeServices.assignGuestCartToUser({ userId, cartId });
+
+    return res.status(result.status).json(result);
+  } catch (err) {
+    console.error('[assignGuestCartToUserController Error]', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+
 /////// Get Cart ////////////////////////
 const getCart = async (req, res) => {
   /*
@@ -205,7 +237,6 @@ const getCart = async (req, res) => {
   const result = await storeServices.getCart({ accessToken, cartId });
   return res.status(result.status).json(result);
 };
-
 
 
 ////////// Remove Item From Cart ////////////////
@@ -335,4 +366,5 @@ module.exports = {
   removeItemFromCart,
   makeOrder,
   getMyOrders,
+  assignGuestCartToUser,
 };

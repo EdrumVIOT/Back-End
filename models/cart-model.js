@@ -5,7 +5,7 @@ const cartSchema = new Schema({
   userId: {
     type: Number,
     ref: 'User',
-    required: true,
+    required: false,
   },
   cart: [
     {

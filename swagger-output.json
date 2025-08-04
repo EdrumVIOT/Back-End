@@ -1704,14 +1704,14 @@
           "Cart"
         ],
         "summary": "Add item to cart",
-        "description": "Add a product to the user\\'s cart",
+        "description": "Add a product to the user\\'s or guest cart. Requires either accessToken (for logged-in users) or cartId (for guests).",
         "parameters": [
           {
             "name": "Authorization",
             "in": "header",
-            "required": true,
+            "required": false,
             "type": "string",
-            "description": "Bearer accessToken"
+            "description": "Bearer accessToken (for logged-in users)"
           },
           {
             "name": "body",
@@ -1727,6 +1727,10 @@
                 "quantity": {
                   "type": "number",
                   "example": 1
+                },
+                "cartId": {
+                  "type": "string",
+                  "example": "string (optional for guests)"
                 }
               }
             }
@@ -1738,14 +1742,48 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
             "description": "Bad Request"
           },
-          "401": {
-            "description": "Unauthorized"
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/store/assignGuestCartToUser": {
+      "post": {
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Assign guest cart to logged-in user",
+        "description": "Merge or assign guest cart items to the user\\'s cart after login",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "example": "number"
+                },
+                "cartId": {
+                  "type": "string",
+                  "example": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         }
       }
@@ -1755,15 +1793,22 @@
         "tags": [
           "Cart"
         ],
-        "summary": "Get user cart",
-        "description": "Retrieve all cart items for the logged-in user",
+        "summary": "Get cart",
+        "description": "Retrieve all cart items for logged-in or guest user",
         "parameters": [
           {
             "name": "Authorization",
             "in": "header",
-            "required": true,
+            "required": false,
             "type": "string",
-            "description": "Bearer accessToken"
+            "description": "Bearer accessToken (for logged-in users)"
+          },
+          {
+            "name": "cartId",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "description": "Cart ID (for guest users)"
           },
           {
             "name": "authorization",
@@ -1772,14 +1817,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
+          "default": {
+            "description": ""
           }
         }
       }
@@ -1790,14 +1829,14 @@
           "Cart"
         ],
         "summary": "Remove item from cart",
-        "description": "Remove a specific product from the user\\'s cart",
+        "description": "Remove a specific product from the cart (logged-in or guest)",
         "parameters": [
           {
             "name": "Authorization",
             "in": "header",
-            "required": true,
+            "required": false,
             "type": "string",
-            "description": "Bearer accessToken"
+            "description": "Bearer accessToken (for logged-in users)"
           },
           {
             "name": "body",
@@ -1809,6 +1848,10 @@
                 "productId": {
                   "type": "string",
                   "example": "string"
+                },
+                "cartId": {
+                  "type": "string",
+                  "example": "string (optional for guest users)"
                 }
               }
             }
@@ -1820,14 +1863,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
             "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
           }
         }
       }
@@ -1837,15 +1874,29 @@
         "tags": [
           "Cart"
         ],
-        "summary": "Clear user cart",
-        "description": "Remove all items from the user\\'s cart",
+        "summary": "Clear cart",
+        "description": "Remove all items from the cart (logged-in or guest)",
         "parameters": [
           {
             "name": "Authorization",
             "in": "header",
-            "required": true,
+            "required": false,
             "type": "string",
-            "description": "Bearer accessToken"
+            "description": "Bearer accessToken (for logged-in users)"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "cartId": {
+                  "type": "string",
+                  "example": "string (optional for guest users)"
+                }
+              }
+            }
           },
           {
             "name": "authorization",
@@ -1854,14 +1905,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
+          "default": {
+            "description": ""
           }
         }
       }

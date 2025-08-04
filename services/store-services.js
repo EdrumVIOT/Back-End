@@ -193,6 +193,60 @@ const addItemToCart = async ({ productId, quantity = 1, accessToken = null, cart
 };
 
 
+/////////// Assign user to cart /////////////////
+const assignGuestCartToUser = async ({ userId, cartId }) => {
+  try {
+    if (!userId || !cartId) {
+      return { success: false, status: 400, message: 'userId and cartId are required' };
+    }
+
+    const guestCart = await Cart.findById(cartId);
+    if (!guestCart) {
+      return { success: false, status: 404, message: 'Guest cart not found' };
+    }
+
+    const userCart = await Cart.findOne({ userId });
+
+    if (userCart) {
+      for (const guestItem of guestCart.items) {
+        const existingItem = userCart.items.find(
+          (item) => item.productId.toString() === guestItem.productId.toString()
+        );
+        if (existingItem) {
+          existingItem.quantity += guestItem.quantity;
+        } else {
+          userCart.items.push(guestItem);
+        }
+      }
+      userCart.updatedAt = new Date();
+      await userCart.save();
+      await Cart.findByIdAndDelete(cartId);
+
+      return {
+        success: true,
+        status: 200,
+        message: 'Guest cart merged into user cart',
+        data: userCart
+      };
+    } else {
+      guestCart.userId = userId;
+      guestCart.updatedAt = new Date();
+      await guestCart.save();
+
+      return {
+        success: true,
+        status: 200,
+        message: 'Guest cart assigned to user',
+        data: guestCart
+      };
+    }
+  } catch (err) {
+    console.error('[assignGuestCartToUser Error]', err);
+    return { success: false, status: 503, message: err.message };
+  }
+};
+
+
 ////////// Get Cart //////////////////////////////
 const getCart = async ({ accessToken = null, cartId = null }) => {
   try {
@@ -237,6 +291,7 @@ const getCart = async ({ accessToken = null, cartId = null }) => {
     };
   }
 };
+
 
 //////////////////// Remove Item from Cart ////////////////////
 const removeItemFromCart = async ({ accessToken = null, cartId = null, productId }) => {
@@ -291,7 +346,6 @@ const removeItemFromCart = async ({ accessToken = null, cartId = null, productId
 };
 
 
-
 //////////////////// Clear Cart ////////////////////
 const clearCart = async ({ accessToken = null, cartId = null }) => {
   try {
@@ -331,7 +385,6 @@ const clearCart = async ({ accessToken = null, cartId = null }) => {
     return { success: false, status: 503, message: err.message };
   }
 };
-
 
 
 ////////////// Make Order ///////////////////////////////////
@@ -426,5 +479,6 @@ module.exports = {
   clearCart,
   getCart,
   createOrder,
-  getMyOrders
+  getMyOrders,
+  assignGuestCartToUser
 };
