@@ -2,6 +2,7 @@ const Product = require('../models/product-model');
 const Cart = require('../models/cart-model');
 const Order = require('../models/order-model');
 const { verifyToken } = require('../utils/verifyToken');
+const mongoose = require("mongoose");
 
 
 //////////////////// Create Product ////////////////////
@@ -156,26 +157,30 @@ const addItemToCart = async ({ productId, quantity = 1, accessToken = null, cart
 
     if (userId) {
       cart = await Cart.findOne({ userId });
-    } else if (cartId) {
+    } else if (cartId && mongoose.Types.ObjectId.isValid(cartId)) {
       cart = await Cart.findById(cartId);
     }
 
     if (!cart) {
+      // Create new cart
       cart = new Cart({
         userId: userId || undefined,
-        items: [{ productId, quantity }]
+        cart: [{ productId, quantity }],
       });
     } else {
-      const existingItem = cart.items.find(
+      if (!Array.isArray(cart.cart)) cart.cart = [];
+
+      const existingItem = cart.cart.find(
         (item) => item.productId.toString() === productId
       );
 
       if (existingItem) {
         existingItem.quantity += quantity;
       } else {
-        cart.items.push({ productId, quantity });
+        cart.cart.push({ productId, quantity });
       }
     }
+
     cart.updatedAt = new Date();
     await cart.save();
 
@@ -184,7 +189,7 @@ const addItemToCart = async ({ productId, quantity = 1, accessToken = null, cart
       status: 200,
       message: 'Product added to cart',
       data: cart,
-      cartId: cart._id 
+      cartId: cart._id,
     };
   } catch (err) {
     console.error('[addItemToCart Error]', err);
@@ -251,6 +256,7 @@ const assignGuestCartToUser = async ({ userId, cartId }) => {
 const getCart = async ({ accessToken = null, cartId = null }) => {
   try {
     let userId = null;
+
     if (accessToken) {
       try {
         const decoded = verifyToken(accessToken);
@@ -260,12 +266,20 @@ const getCart = async ({ accessToken = null, cartId = null }) => {
       }
     }
 
-    let cart;
+    let cart = null;
 
     if (userId) {
-      cart = await Cart.findOne({ userId }).populate('items.productId');
+      cart = await Cart.findOne({ userId }).populate('cart.productId'); 
     } else if (cartId) {
-      cart = await Cart.findById(cartId).populate('items.productId');
+      if (!mongoose.Types.ObjectId.isValid(cartId)) {
+        return {
+          success: false,
+          status: 400,
+          message: 'Invalid cart ID format',
+        };
+      }
+
+      cart = await Cart.findById(cartId).populate('cart.productId');
     }
 
     if (!cart) {
@@ -273,25 +287,24 @@ const getCart = async ({ accessToken = null, cartId = null }) => {
         success: true,
         status: 200,
         message: 'Cart is empty',
-        data: []
+        data: [],
       };
     }
 
     return {
       success: true,
       status: 200,
-      data: cart
+      data: cart,
     };
   } catch (err) {
     console.error('[getCart Error]', err);
     return {
       success: false,
       status: 503,
-      message: err.message
+      message: err.message,
     };
   }
 };
-
 
 //////////////////// Remove Item from Cart ////////////////////
 const removeItemFromCart = async ({ accessToken = null, cartId = null, productId }) => {

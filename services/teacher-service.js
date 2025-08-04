@@ -15,7 +15,7 @@ const getOwnCourses = async (accessToken) => {
     const decoded = verifyToken(accessToken);
     if (decoded.role !== 'teacher') throw new HttpError('Only teachers can access their own courses', 403);
 
-    const courses = await Course.find({ teacherId: decoded.userId });
+    const courses = await Course.find({ teacherUserId: decoded.userId });
     return { success: true, data: courses };
   } catch (err) {
     console.error('[getOwnCourses Error]', err);
@@ -48,13 +48,13 @@ const getLessonsByCourseId = async (accessToken, courseId) => {
 
 
 //////////////////////// Create Course //////////////////////////////////////////////////////////
-const createCourse = async ({ accessToken, title, description, level, category, price }) => {
+const createCourse = async ({ accessToken, title, description, level, price }) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
     const decoded = verifyToken(accessToken);
     if (!['teacher', 'admin'].includes(decoded.role)) throw new HttpError('Only teachers or admins can create courses', 403);
 
-    const course = new Course({ teacherUserId: decoded.userId, title, description, level, category, price });
+    const course = new Course({ teacherUserId: decoded.userId, title, description, level, price });
     const savedCourse = await course.save();
     return { success: true, data: savedCourse };
   } catch (err) {

@@ -105,21 +105,20 @@ const createCourse = async (req, res) => {
         title: "Beginner Piano Course",
         description: "Learn piano from scratch.",
         level: "beginner",
-        category: "music",
         price: 49.99
       }
     }
   */
   try {
     const accessToken = req.headers.authorization?.split(' ')[1];
-    const { title, description, level, category, price } = req.body;
+    const { title, description, level, price } = req.body;
 
     if (!accessToken) return res.status(401).json({ error: 'Access token is missing' });
     if (!title || typeof price !== 'number') {
       return res.status(422).json({ error: 'Title and price are required and must be valid' });
     }
 
-    const result = await teacherServices.createCourse({ accessToken, title, description, level, category, price });
+    const result = await teacherServices.createCourse({ accessToken, title, description, level, price });
 
     if (result.success) return res.status(201).json({ course: result.data });
     if (result.error === 'Unauthorized') return res.status(403).json({ error: 'Only admin or teacher can create courses' });

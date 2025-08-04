@@ -1196,10 +1196,6 @@
                   "type": "string",
                   "example": "beginner"
                 },
-                "category": {
-                  "type": "string",
-                  "example": "music"
-                },
                 "price": {
                   "type": "number",
                   "example": 49.99

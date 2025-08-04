@@ -12,7 +12,6 @@ const courseSchema = new Schema({
   },
   description: String,
   level: String,
-  category: String,
   price: {
     type: Number,
     required: true,
