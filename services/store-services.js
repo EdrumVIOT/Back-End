@@ -135,21 +135,34 @@ const deleteProduct = async (accessToken, productId) => {
 
 
 //////////// Add item to Cart ///////////////////////////
-const addItemToCart = async (accessToken, productId, quantity = 1) => {
+const addItemToCart = async ({ productId, quantity = 1, accessToken = null, cartId = null }) => {
   try {
-    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
-
-    const decoded = verifyToken(accessToken);
-    const userId = decoded.userId;
-
     const product = await Product.findById(productId);
-    if (!product) return { success: false, status: 404, message: 'Product not found' };
+    if (!product) {
+      return { success: false, status: 404, message: 'Product not found' };
+    }
 
-    let cart = await Cart.findOne({ userId });
+    let userId = null;
+    if (accessToken) {
+      try {
+        const decoded = verifyToken(accessToken);
+        userId = decoded.userId;
+      } catch (err) {
+        console.warn('[addItemToCart] Invalid accessToken:', err.message);
+      }
+    }
+
+    let cart;
+
+    if (userId) {
+      cart = await Cart.findOne({ userId });
+    } else if (cartId) {
+      cart = await Cart.findById(cartId);
+    }
 
     if (!cart) {
       cart = new Cart({
-        userId,
+        userId: userId || undefined,
         items: [{ productId, quantity }]
       });
     } else {
@@ -163,7 +176,6 @@ const addItemToCart = async (accessToken, productId, quantity = 1) => {
         cart.items.push({ productId, quantity });
       }
     }
-
     cart.updatedAt = new Date();
     await cart.save();
 
@@ -171,47 +183,88 @@ const addItemToCart = async (accessToken, productId, quantity = 1) => {
       success: true,
       status: 200,
       message: 'Product added to cart',
-      data: cart
+      data: cart,
+      cartId: cart._id 
     };
   } catch (err) {
-    console.error('[addProductToCart Error]', err);
+    console.error('[addItemToCart Error]', err);
     return { success: false, status: 503, message: err.message };
   }
 };
 
 
 ////////// Get Cart //////////////////////////////
-const getCart = async (accessToken) => {
+const getCart = async ({ accessToken = null, cartId = null }) => {
   try {
-    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
-
-    const decoded = verifyToken(accessToken);
-    const userId = decoded.userId;
-
-    const cart = await Cart.findOne({ userId }).populate('items.productId');
-
-    if (!cart) {
-      return { success: true, status: 200, message: 'Cart is empty', data: [] };
+    let userId = null;
+    if (accessToken) {
+      try {
+        const decoded = verifyToken(accessToken);
+        userId = decoded.userId;
+      } catch (err) {
+        console.warn('[getCart] Invalid access token:', err.message);
+      }
     }
 
-    return { success: true, status: 200, data: cart };
+    let cart;
+
+    if (userId) {
+      cart = await Cart.findOne({ userId }).populate('items.productId');
+    } else if (cartId) {
+      cart = await Cart.findById(cartId).populate('items.productId');
+    }
+
+    if (!cart) {
+      return {
+        success: true,
+        status: 200,
+        message: 'Cart is empty',
+        data: []
+      };
+    }
+
+    return {
+      success: true,
+      status: 200,
+      data: cart
+    };
   } catch (err) {
     console.error('[getCart Error]', err);
-    return { success: false, status: 503, message: err.message };
+    return {
+      success: false,
+      status: 503,
+      message: err.message
+    };
   }
 };
 
-
 //////////////////// Remove Item from Cart ////////////////////
-const removeItemFromCart = async (accessToken, productId) => {
+const removeItemFromCart = async ({ accessToken = null, cartId = null, productId }) => {
   try {
-    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
+    if (!productId) {
+      return { success: false, status: 400, message: 'Product ID is required' };
+    }
 
-    const decoded = verifyToken(accessToken);
-    const userId = decoded.userId;
+    let userId = null;
+    if (accessToken) {
+      try {
+        const decoded = verifyToken(accessToken);
+        userId = decoded.userId;
+      } catch (err) {
+        console.warn('[removeItemFromCart] Invalid token:', err.message);
+      }
+    }
 
-    const cart = await Cart.findOne({ userId });
-    if (!cart) return { success: false, status: 404, message: 'Cart not found' };
+    let cart = null;
+    if (userId) {
+      cart = await Cart.findOne({ userId });
+    } else if (cartId) {
+      cart = await Cart.findById(cartId);
+    }
+
+    if (!cart) {
+      return { success: false, status: 404, message: 'Cart not found' };
+    }
 
     const originalLength = cart.items.length;
     cart.items = cart.items.filter(
@@ -238,16 +291,30 @@ const removeItemFromCart = async (accessToken, productId) => {
 };
 
 
+
 //////////////////// Clear Cart ////////////////////
-const clearCart = async (accessToken) => {
+const clearCart = async ({ accessToken = null, cartId = null }) => {
   try {
-    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
+    let userId = null;
+    if (accessToken) {
+      try {
+        const decoded = verifyToken(accessToken);
+        userId = decoded.userId;
+      } catch (err) {
+        console.warn('[clearCart] Invalid token:', err.message);
+      }
+    }
 
-    const decoded = verifyToken(accessToken);
-    const userId = decoded.userId;
+    let cart = null;
+    if (userId) {
+      cart = await Cart.findOne({ userId });
+    } else if (cartId) {
+      cart = await Cart.findById(cartId);
+    }
 
-    const cart = await Cart.findOne({ userId });
-    if (!cart) return { success: false, status: 404, message: 'Cart not found' };
+    if (!cart) {
+      return { success: false, status: 404, message: 'Cart not found' };
+    }
 
     cart.items = [];
     cart.updatedAt = new Date();
@@ -264,6 +331,7 @@ const clearCart = async (accessToken) => {
     return { success: false, status: 503, message: err.message };
   }
 };
+
 
 
 ////////////// Make Order ///////////////////////////////////

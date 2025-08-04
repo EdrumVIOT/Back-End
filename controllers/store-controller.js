@@ -134,36 +134,49 @@ const deleteProduct = async (req, res) => {
 };
 
 
-/////////// Cart Controllers ///////////
+/////////// Add Item to Cart ///////////
 const addItemToCart = async (req, res) => {
   /*
     #swagger.tags = ['Cart']
     #swagger.summary = 'Add item to cart'
-    #swagger.description = 'Add a product to the user\'s cart'
+    #swagger.description = 'Add a product to the user\'s or guest cart. Requires either accessToken (for logged-in users) or cartId (for guests).'
     #swagger.parameters['Authorization'] = {
       in: 'header',
-      required: true,
+      required: false,
       type: 'string',
-      description: 'Bearer accessToken'
+      description: 'Bearer accessToken (for logged-in users)'
     }
     #swagger.parameters['body'] = {
       in: 'body',
       required: true,
       schema: {
         productId: "string",
-        quantity: 1
+        quantity: 1,
+        cartId: "string (optional for guests)"
       }
     }
   */
-  const accessToken = req.headers.authorization?.split(' ')[1];
-  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
-  const { productId, quantity } = req.body;
-  if (!productId || !quantity) return res.status(401).json({ error: 'All fields required' });
-  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
-  
 
-  const result = await storeServices.addItemToCart(accessToken, productId, quantity);
-  return res.status(result.success ? 200 : 400).json(result);
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1] || null;
+    const { productId, quantity = 1, cartId = null } = req.body;
+
+    if (!productId || quantity <= 0) {
+      return res.status(400).json({ success: false, message: 'Product ID and valid quantity are required' });
+    }
+
+    const result = await storeServices.addItemToCart({
+      productId,
+      quantity,
+      accessToken,
+      cartId
+    });
+
+    return res.status(result.status).json(result);
+  } catch (err) {
+    console.error('[addItemToCart Controller Error]', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 };
 
 
@@ -171,21 +184,28 @@ const addItemToCart = async (req, res) => {
 const getCart = async (req, res) => {
   /*
     #swagger.tags = ['Cart']
-    #swagger.summary = 'Get user cart'
-    #swagger.description = 'Retrieve all cart items for the logged-in user'
+    #swagger.summary = 'Get cart'
+    #swagger.description = 'Retrieve all cart items for logged-in or guest user'
     #swagger.parameters['Authorization'] = {
       in: 'header',
-      required: true,
+      required: false,
       type: 'string',
-      description: 'Bearer accessToken'
+      description: 'Bearer accessToken (for logged-in users)'
+    }
+    #swagger.parameters['cartId'] = {
+      in: 'query',
+      required: false,
+      type: 'string',
+      description: 'Cart ID (for guest users)'
     }
   */
-  const accessToken = req.headers.authorization?.split(' ')[1];
-  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
-  const result = await storeServices.getCart(accessToken);
+  const accessToken = req.headers.authorization?.split(' ')[1] || null;
+  const cartId = req.query.cartId || null;
 
-  return res.status(result.success ? 200 : 400).json(result);
+  const result = await storeServices.getCart({ accessToken, cartId });
+  return res.status(result.status).json(result);
 };
+
 
 
 ////////// Remove Item From Cart ////////////////
@@ -193,49 +213,62 @@ const removeItemFromCart = async (req, res) => {
   /*
     #swagger.tags = ['Cart']
     #swagger.summary = 'Remove item from cart'
-    #swagger.description = 'Remove a specific product from the user\'s cart'
+    #swagger.description = 'Remove a specific product from the cart (logged-in or guest)'
     #swagger.parameters['Authorization'] = {
       in: 'header',
-      required: true,
+      required: false,
       type: 'string',
-      description: 'Bearer accessToken'
+      description: 'Bearer accessToken (for logged-in users)'
     }
     #swagger.parameters['body'] = {
       in: 'body',
       required: true,
       schema: {
-        productId: 'string'
+        productId: 'string',
+        cartId: 'string (optional for guest users)'
       }
     }
   */
-  const accessToken = req.headers.authorization?.split(' ')[1];
-  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
-  const { productId } = req.body;
-  if (!productId) return res.status(401).json({ error: 'Product id missing' });
+  const accessToken = req.headers.authorization?.split(' ')[1] || null;
+  const { productId, cartId = null } = req.body;
 
-  const result = await storeServices.removeItemFromCart(accessToken, productId);
-  return res.status(result.success ? 200 : 400).json(result);
+  if (!productId) {
+    return res.status(400).json({ success: false, message: 'Product ID is required' });
+  }
+
+  const result = await storeServices.removeItemFromCart({ accessToken, cartId, productId });
+  return res.status(result.status).json(result);
 };
+
 
 
 ////////// Clear Cart ///////////////////
 const clearCart = async (req, res) => {
   /*
     #swagger.tags = ['Cart']
-    #swagger.summary = 'Clear user cart'
-    #swagger.description = 'Remove all items from the user\'s cart'
+    #swagger.summary = 'Clear cart'
+    #swagger.description = 'Remove all items from the cart (logged-in or guest)'
     #swagger.parameters['Authorization'] = {
       in: 'header',
-      required: true,
+      required: false,
       type: 'string',
-      description: 'Bearer accessToken'
+      description: 'Bearer accessToken (for logged-in users)'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: false,
+      schema: {
+        cartId: 'string (optional for guest users)'
+      }
     }
   */
-  const accessToken = req.headers.authorization?.split(' ')[1];
-  if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
-  const result = await storeServices.clearCart(accessToken);
-  return res.status(result.success ? 200 : 400).json(result);
+  const accessToken = req.headers.authorization?.split(' ')[1] || null;
+  const { cartId = null } = req.body;
+
+  const result = await storeServices.clearCart({ accessToken, cartId });
+  return res.status(result.status).json(result);
 };
+
 
 
 ////////////////// Make Order ////////////////////////////////

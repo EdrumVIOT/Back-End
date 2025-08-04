@@ -139,9 +139,6 @@ const getAdminDashboardStats = async (accessToken) => {
   }
 };
 
-module.exports = { getAdminDashboardStats };
-
-
 
 
 //////////////////// Update User  ////////////////////

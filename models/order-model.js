@@ -7,6 +7,11 @@ const orderSchema = new Schema({
     ref: 'Cart',
     required: true,
   },
+  userId: {
+    type: Number,
+    ref: 'User',
+    required: true,
+  },
   status: {
     type: String,
     enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
