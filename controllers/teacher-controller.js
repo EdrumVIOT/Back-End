@@ -281,6 +281,161 @@ const changeTeacherPassword = async (req, res) => {
 };
 
 
+//////////// Update Course //////////////////////////////
+const updateCourse = async (req, res) => {
+    /*
+    #swagger.tags = ['Meeting']
+    #swagger.summary = 'Set meeting time (teacher only)'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer access token',
+      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        courseId: " ", 
+        title : " ",
+        description: " ",
+        level: " ",
+        price: " "
+      }
+    }
+  */
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const { courseId, title, description, level, price } = req.body;
+
+    if (!accessToken || !courseId) {
+      return res.status(400).json({ error: 'Access token and courseId are required' });
+    }
+
+    const result = await teacherServices.updateCourse({ accessToken, courseId, title, description, level, price });
+
+    return res.status(result.success ? 200 : 403).json(result);
+  } catch (err) {
+    console.error('[updateCourse error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
+  }
+};
+
+//////////// Delete Course //////////////////////////////
+const deleteCourse = async (req, res) => {
+      /*
+    #swagger.tags = ['Meeting']
+    #swagger.summary = 'Set meeting time (teacher only)'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer access token',
+      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        courseId: " "
+      }
+    }
+  */
+
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const { courseId } = req.params;
+
+    if (!accessToken || !courseId) {
+      return res.status(400).json({ error: 'Access token and courseId are required' });
+    }
+
+    const result = await teacherServices.deleteCourse({ accessToken, courseId });
+    return res.status(result.success ? 200 : 403).json(result);
+  } catch (err) {
+    console.error('[deleteCourse error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
+  }
+};
+
+
+//////////// Update Lesson //////////////////////////////
+const updateLesson = async (req, res) => {
+   /*
+    #swagger.tags = ['Meeting']
+    #swagger.summary = 'Set meeting time (teacher only)'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer access token',
+      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        lessonId: " ",
+        videoUrl: " ",
+        duration: " ",
+        thumbnailUrl: " "
+      }
+    }
+  */
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const { lessonId, videoUrl, duration, thumbnailUrl } = req.body;
+
+    if (!accessToken || !lessonId) {
+      return res.status(400).json({ error: 'Access token and lessonId are required' });
+    }
+
+    const result = await teacherServices.updateLesson({ accessToken, lessonId, videoUrl, duration, thumbnailUrl });
+    return res.status(result.success ? 200 : 403).json(result);
+  } catch (err) {
+    console.error('[updateLesson error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
+  }
+};
+
+//////////// Delete Lesson //////////////////////////////
+const deleteLesson = async (req, res) => {
+          /*
+    #swagger.tags = ['Meeting']
+    #swagger.summary = 'Set meeting time (teacher only)'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer access token',
+      example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...'
+    }
+    #swagger.parameters['body'] = {
+      in: 'body',
+      required: true,
+      schema: {
+        lessonId: " "
+      }
+    }
+  */
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    const { lessonId } = req.params;
+
+    if (!accessToken || !lessonId) {
+      return res.status(400).json({ error: 'Access token and lessonId are required' });
+    }
+
+    const result = await teacherServices.deleteLesson({ accessToken, lessonId });
+    return res.status(result.success ? 200 : 403).json(result);
+  } catch (err) {
+    console.error('[deleteLesson error]', err);
+    return res.status(503).json({ error: 'Service unavailable: ' + err.message });
+  }
+};
+
+
 
 module.exports = {
   getOwnCourses,
@@ -289,5 +444,9 @@ module.exports = {
   createCourse,
   uploadLesson,
   setMeeting,
-  changeTeacherPassword
+  changeTeacherPassword,
+  updateCourse,
+  deleteCourse,
+  updateLesson,
+  deleteLesson,
 };

@@ -204,6 +204,7 @@ const assignGuestCartToUser = async ({ accessToken, cartId }) => {
     if (!accessToken || !cartId) {
       return { success: false, status: 400, message: 'accessToken and cartId are required' };
     }
+
     const decoded = verifyToken(accessToken);
     const { userId } = decoded;
 
@@ -215,16 +216,18 @@ const assignGuestCartToUser = async ({ accessToken, cartId }) => {
     const userCart = await Cart.findOne({ userId });
 
     if (userCart) {
-      for (const guestItem of guestCart.items) {
-        const existingItem = userCart.items.find(
+      for (const guestItem of guestCart.cart) {
+        const existingItem = userCart.cart.find(
           (item) => item.productId.toString() === guestItem.productId.toString()
         );
+
         if (existingItem) {
           existingItem.quantity += guestItem.quantity;
         } else {
-          userCart.items.push(guestItem);
+          userCart.cart.push(guestItem);
         }
       }
+
       userCart.updatedAt = new Date();
       await userCart.save();
       await Cart.findByIdAndDelete(cartId);

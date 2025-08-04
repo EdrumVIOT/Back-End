@@ -24,30 +24,7 @@ const getOwnCourses = async (accessToken) => {
 };
 
 
-//////////// Get Lessons /////////////////////////////////////////////////////
-const getLessonsByCourseId = async (accessToken, courseId) => {
-  try {
-    if (!accessToken) throw new HttpError('Access token is required', 401);
-    if (!courseId) throw new HttpError('Course ID is required', 400);
-    
-    const decoded = verifyToken(accessToken);
-    if (decoded.role !== 'teacher') throw new HttpError('Only teachers can access course lessons', 403);
-
-    // Optional: Verify that this course belongs to the teacher
-    const course = await Course.findOne({ _id: courseId, teacherId: decoded.userId });
-    if (!course) throw new HttpError('Course not found or not owned by you', 404);
-
-    const lessons = await Lesson.find({ courseId });
-    return { success: true, data: { course, lessons } };
-  } catch (err) {
-    console.error('[getLessonsByCourseId Error]', err);
-    throw new HttpError(err.message || 'Failed to get lessons', 503);
-  }
-};
-
-
-
-//////////////////////// Create Course //////////////////////////////////////////////////////////
+//////////////////////////// Create course (already exists) ///////////////////////////
 const createCourse = async ({ accessToken, title, description, level, price }) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
@@ -63,14 +40,67 @@ const createCourse = async ({ accessToken, title, description, level, price }) =
   }
 };
 
+////////////////////////// Update course ///////////////////////////////////
+const updateCourse = async ({ accessToken, courseId, updateData }) => {
+  try {
+    if (!accessToken) throw new HttpError('Access token is required', 401);
+    const decoded = verifyToken(accessToken);
+    const course = await Course.findOneAndUpdate(
+      { _id: courseId, teacherUserId: decoded.userId },
+      updateData,
+      { new: true }
+    );
+    if (!course) throw new HttpError('Course not found or not owned by you', 404);
+    return { success: true, data: course };
+  } catch (err) {
+    console.error('[updateCourse error]', err);
+    throw new HttpError(err.message || 'Failed to update course', 503);
+  }
+};
 
-////////// Create Lesson ////////////////////////////////////////////////////////////////
+///////////////////////////  Delete course /////////////////////////////////////////////////////////////
+const deleteCourse = async (accessToken, courseId) => {
+  try {
+    if (!accessToken) throw new HttpError('Access token is required', 401);
+    const decoded = verifyToken(accessToken);
+    const deleted = await Course.findOneAndDelete({ _id: courseId, teacherUserId: decoded.userId });
+    if (!deleted) throw new HttpError('Course not found or not owned by you', 404);
+    return { success: true, message: 'Course deleted successfully' };
+  } catch (err) {
+    console.error('[deleteCourse error]', err);
+    throw new HttpError(err.message || 'Failed to delete course', 503);
+  }
+};
+
+
+// Get lessons by courseId (already exists)
+const getLessonsByCourseId = async (accessToken, courseId) => {
+  try {
+    if (!accessToken) throw new HttpError('Access token is required', 401);
+    if (!courseId) throw new HttpError('Course ID is required', 400);
+
+    const decoded = verifyToken(accessToken);
+    if (decoded.role !== 'teacher') throw new HttpError('Only teachers can access course lessons', 403);
+
+    const course = await Course.findOne({ _id: courseId, teacherUserId: decoded.userId });
+    if (!course) throw new HttpError('Course not found or not owned by you', 404);
+
+    const lessons = await Lesson.find({ courseId });
+    return { success: true, data: { course, lessons } };
+  } catch (err) {
+    console.error('[getLessonsByCourseId Error]', err);
+    throw new HttpError(err.message || 'Failed to get lessons', 503);
+  }
+};
+
+
+// Create lesson (already exists, fixed logic bug)
 const createLesson = async ({ accessToken, courseId, videoUrl, duration, thumbnailUrl }) => {
   try {
     if (!accessToken) throw new HttpError('Access token is required', 401);
 
     const decoded = verifyToken(accessToken);
-    if (decoded.role !== "teacher" || decoded.role !== "admin") {
+    if (!['teacher', 'admin'].includes(decoded.role)) {
       throw new HttpError('Only teachers or admins can upload lessons', 403);
     }
 
@@ -89,10 +119,53 @@ const createLesson = async ({ accessToken, courseId, videoUrl, duration, thumbna
 
     const savedLesson = await lesson.save();
     return { success: true, data: savedLesson };
-
   } catch (err) {
     console.error('[createLesson error]', err);
     throw new HttpError(err.message || 'Failed to create lesson', 503);
+  }
+};
+
+
+// Update lesson
+const updateLesson = async ({ accessToken, lessonId, updateData }) => {
+  try {
+    if (!accessToken) throw new HttpError('Access token is required', 401);
+    const decoded = verifyToken(accessToken);
+
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) throw new HttpError('Lesson not found', 404);
+
+    const course = await Course.findOne({ _id: lesson.courseId, teacherUserId: decoded.userId });
+    if (!course) throw new HttpError('You do not have permission to update this lesson', 403);
+
+    Object.assign(lesson, updateData);
+    const updatedLesson = await lesson.save();
+
+    return { success: true, data: updatedLesson };
+  } catch (err) {
+    console.error('[updateLesson error]', err);
+    throw new HttpError(err.message || 'Failed to update lesson', 503);
+  }
+};
+
+
+// Delete lesson
+const deleteLesson = async (accessToken, lessonId) => {
+  try {
+    if (!accessToken) throw new HttpError('Access token is required', 401);
+    const decoded = verifyToken(accessToken);
+
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) throw new HttpError('Lesson not found', 404);
+
+    const course = await Course.findOne({ _id: lesson.courseId, teacherUserId: decoded.userId });
+    if (!course) throw new HttpError('You do not have permission to delete this lesson', 403);
+
+    await lesson.remove();
+    return { success: true, message: 'Lesson deleted successfully' };
+  } catch (err) {
+    console.error('[deleteLesson error]', err);
+    throw new HttpError(err.message || 'Failed to delete lesson', 503);
   }
 };
 
@@ -181,9 +254,15 @@ const changeTeacherPassword = async ({ accessToken, currentPassword, newPassword
 
 module.exports = {
   createCourse,
-  createLesson,
   getOwnCourses,
+  updateCourse,
+  deleteCourse,
+
+  createLesson,
   getLessonsByCourseId,
+  updateLesson,
+  deleteLesson,
+
   getEnrolledStudentsInMyCourses,
   setMeetingTime,
   changeTeacherPassword
