@@ -260,7 +260,7 @@ const getCart = async ({ accessToken = null, cartId = null }) => {
     let cart = null;
 
     if (userId) {
-      cart = await Cart.findOne({ userId }).populate('cart.productId'); 
+      cart = await Cart.findOne({ userId }).populate('items.productId'); 
     } else if (cartId) {
       if (!mongoose.Types.ObjectId.isValid(cartId)) {
         return {
@@ -270,7 +270,7 @@ const getCart = async ({ accessToken = null, cartId = null }) => {
         };
       }
 
-      cart = await Cart.findById(cartId).populate('cart.productId');
+      cart = await Cart.findById(cartId).populate('items.productId');
     }
 
     if (!cart) {
