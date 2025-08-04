@@ -186,24 +186,26 @@ const assignGuestCartToUser = async (req, res) => {
     #swagger.tags = ['Cart']
     #swagger.summary = 'Assign guest cart to logged-in user'
     #swagger.description = 'Merge or assign guest cart items to the user\'s cart after login'
+    #swagger.parameters['Authorization'] = {
+      in: 'header',
+      required: true,
+      type: 'string',
+      description: 'Bearer accessToken'
+    }
     #swagger.parameters['body'] = {
       in: 'body',
       required: true,
       schema: {
-        userId: 'number',
         cartId: 'string'
       }
     }
   */
   try {
-    const { userId, cartId } = req.body;
-
-    if (!userId || !cartId) {
-      return res.status(400).json({ success: false, message: 'userId and cartId are required' });
-    }
-
-    const result = await storeServices.assignGuestCartToUser({ userId, cartId });
-
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
+    const {cartId } = req.body;
+    if (!cartId){return res.status(400).json({ success: false, message: 'userId and cartId are required' });}
+    const result = await storeServices.assignGuestCartToUser({ accessToken, cartId });
     return res.status(result.status).json(result);
   } catch (err) {
     console.error('[assignGuestCartToUserController Error]', err);

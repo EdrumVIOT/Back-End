@@ -199,11 +199,13 @@ const addItemToCart = async ({ productId, quantity = 1, accessToken = null, cart
 
 
 /////////// Assign user to cart /////////////////
-const assignGuestCartToUser = async ({ userId, cartId }) => {
+const assignGuestCartToUser = async ({ accessToken, cartId }) => {
   try {
-    if (!userId || !cartId) {
-      return { success: false, status: 400, message: 'userId and cartId are required' };
+    if (!accessToken || !cartId) {
+      return { success: false, status: 400, message: 'accessToken and cartId are required' };
     }
+    const decoded = verifyToken(accessToken);
+    const { userId } = decoded;
 
     const guestCart = await Cart.findById(cartId);
     if (!guestCart) {
