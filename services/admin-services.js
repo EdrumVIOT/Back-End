@@ -323,32 +323,50 @@ const getAllOrders = async (accessToken) => {
       return { success: false, status: 403, message: 'Admin access required' };
     }
 
+    // 1. Find all orders and populate cart items
     const orders = await Order.find()
       .sort({ createdAt: -1 })
       .populate({
         path: 'cartId',
-        populate: [
-          {
-            path: 'userId',
-            select: 'name phoneNumber email role'
-          },
-          {
-            path: 'items.productId',
-            select: 'title price thumbnail'
-          }
-        ]
+        populate: {
+          path: 'items.productId',
+          select: 'title price thumbnail'
+        }
       });
 
+    // 2. Extract userIds from carts
+    const userIds = [...new Set(orders.map(order => order.cartId?.userId).filter(Boolean))];
+
+    // 3. Fetch users with those userIds
+    const users = await User.find({ userId: { $in: userIds } }).select('userId phoneNumber');
+
+    // 4. Map userId -> phoneNumber
+    const phoneMap = {};
+    users.forEach(user => {
+      phoneMap[user.userId] = user.phoneNumber;
+    });
+
+    // 5. Inject phoneNumber into each order
+    const ordersWithPhone = orders.map(order => {
+      const obj = order.toObject();  // Convert Mongoose doc to plain JS
+      const uid = obj.cartId?.userId;
+      obj.userPhoneNumber = uid ? phoneMap[uid] || null : null;
+      return obj;
+    });
+
+    // ✅ RETURN the modified data
     return {
       success: true,
       status: 200,
-      data: orders
+      data: ordersWithPhone
     };
   } catch (err) {
-    console.error('[getAllOrdersForAdmin Error]', err);
+    console.error('[getAllOrders Error]', err);
     return { success: false, status: 503, message: err.message };
   }
 };
+
+
 
 
 ////////////////////// Update Order Status //////////////////////////
