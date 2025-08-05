@@ -4,7 +4,6 @@ const { Schema, model } = mongoose;
 const cartSchema = new Schema({
   userId: {
     type: Number,
-    ref: 'User',
     required: false,
   },
   items: [
