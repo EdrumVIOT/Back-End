@@ -320,7 +320,7 @@ const makeOrder = async (req, res) => {
   if (!accessToken) return res.status(401).json({ error: 'Access token missing' });
   const { cartId } = req.body;
   if (!cartId) return res.status(401).json({ error: 'Cart id missing' });
-  const result = await storeServices.makeOrder(accessToken, cartId);
+  const result = await storeServices.createOrder(accessToken, cartId);
 
   return res.status(result.success ? 200 : 400).json(result);
 };
