@@ -536,6 +536,8 @@ const verifyGuestOrder = async ({ phoneNumber, otp, cartId, action }) => {
     await cart.save();
 
     await Otp.deleteMany({ number: phoneNumber });
+    const messageSent = await sendMessage(phoneNumber, "Your order confirmed");
+    
 
     return {
       success: true,
@@ -544,6 +546,7 @@ const verifyGuestOrder = async ({ phoneNumber, otp, cartId, action }) => {
       data: {
         orderId: newOrder._id,
         totalAmount,
+        messageSent,
       },
     };
   }

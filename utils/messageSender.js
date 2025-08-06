@@ -8,7 +8,7 @@ const sendMessage = asyncHandler(async (phoneNumber, message, authType) => {
     const result = await axios.get(process.env.MESSAGE_API, {
       params: {
         key: process.env.MESSAGE_KEY,
-        text: `${message} is your confirmation code for E-Drum`,
+        text: `${message}`,
         to: fullNumber,
         from: process.env.MESSAGE_PHONE_1,
       },
