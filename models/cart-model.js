@@ -19,7 +19,12 @@ const cartSchema = new Schema({
         min: 1,
       },
     }
-  ]
+  ],
+  isOrdered : {
+    type:Boolean,
+    required:false,
+    default:false,
+  }
 });
 
 module.exports = model('Cart', cartSchema);

@@ -1,6 +1,7 @@
 const User = require("../models/user-model");
 const HttpError = require("../middleware/http-error");
 const Otp = require('../models/otp-model');
+const Cart = require('../models/cart-model')
 const Comment = require('../models/comment-model');
 const { sendMessage } = require("../utils/messageSender");
 const { verifyToken, verifyRefreshToken, verifyResetPasswordToken } = require("../utils/verifyToken");
@@ -127,11 +128,19 @@ const refreshAccessTokenService = async (refreshToken) => {
 // --------------------------- GET USER DATA ---------------------------
 const getUserDataService = async (accessToken) => {
   const decoded = verifyToken(accessToken);
-  const user = await User.findOne({ userId: Number(decoded.userId) }).select('-password');
+  const userId = Number(decoded.userId);
+
+  const user = await User.findOne({ userId }).select('-password');
   if (!user) throw new HttpError('User not found.', 404);
 
-  return { user: user.toObject({ getters: true }) };
+  const activeCart = await Cart.findOne({ userId, isOrdered: false });
+
+  return {
+    user: user.toObject({ getters: true }),
+    cartId: activeCart ? activeCart._id.toString() : null,
+  };
 };
+
 
 // --------------------------- REQUEST PASSWORD RESET ---------------------------
 const requestResetService = async (phoneNumber) => {

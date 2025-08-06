@@ -5,6 +5,7 @@ const Otp = require('../models/otp-model');
 const { sendMessage } = require("../utils/messageSender");
 const { verifyToken } = require('../utils/verifyToken');
 const mongoose = require("mongoose");
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 
 //////////////////// Create Product ////////////////////
@@ -199,10 +200,11 @@ const assignGuestCartToUser = async ({ accessToken, cartId }) => {
       return { success: false, status: 404, message: 'Guest cart not found' };
     }
 
-    const userCart = await Cart.findOne({ userId });
+    // Find user cart that is still active (not ordered)
+    let userCart = await Cart.findOne({ userId, isOrdered: false });
 
     if (userCart) {
-      for (const guestItem of guestCart.cart) {
+      for (const guestItem of guestCart.items) {
         const existingItem = userCart.items.find(
           (item) => item.productId.toString() === guestItem.productId.toString()
         );
@@ -210,7 +212,7 @@ const assignGuestCartToUser = async ({ accessToken, cartId }) => {
         if (existingItem) {
           existingItem.quantity += guestItem.quantity;
         } else {
-          userCart.cart.push(guestItem);
+          userCart.items.push(guestItem);
         }
       }
 
@@ -226,6 +228,7 @@ const assignGuestCartToUser = async ({ accessToken, cartId }) => {
       };
     } else {
       guestCart.userId = userId;
+      guestCart.isOrdered = false; 
       guestCart.updatedAt = new Date();
       await guestCart.save();
 
@@ -248,19 +251,19 @@ const getCart = async ({ accessToken = null, cartId = null }) => {
   try {
     let userId = null;
 
-    if (accessToken) {
-      try {
-        const decoded = verifyToken(accessToken);
-        userId = decoded.userId;
-      } catch (err) {
-        console.warn('[getCart] Invalid access token:', err.message);
+      if (accessToken) {
+        try {
+          const decoded = verifyToken(accessToken);
+          userId = Number(decoded.userId); // ✅ force number
+        } catch (err) {
+          console.warn('[getCart] Invalid access token:', err.message);
+        }
       }
-    }
 
     let cart = null;
 
     if (userId) {
-      cart = await Cart.findOne({ userId }).populate('items.productId'); 
+      cart = await Cart.findOne({ userId, isOrdered: false }).populate('items.productId');
     } else if (cartId) {
       if (!mongoose.Types.ObjectId.isValid(cartId)) {
         return {
@@ -270,14 +273,14 @@ const getCart = async ({ accessToken = null, cartId = null }) => {
         };
       }
 
-      cart = await Cart.findById(cartId).populate('items.productId');
+      cart = await Cart.findOne({ _id: cartId, isOrdered: false }).populate('items.productId');
     }
 
     if (!cart) {
       return {
         success: true,
         status: 200,
-        message: 'Cart is empty',
+        message: 'Cart is empty or already ordered',
         data: [],
       };
     }
@@ -296,6 +299,7 @@ const getCart = async ({ accessToken = null, cartId = null }) => {
     };
   }
 };
+
 
 //////////////////// Remove Item from Cart ////////////////////
 const removeItemFromCart = async ({ accessToken = null, cartId = null, productId }) => {
@@ -394,20 +398,22 @@ const clearCart = async ({ accessToken = null, cartId = null }) => {
 ////////////// Make Order ///////////////////////////////////
 const createOrder = async (accessToken, cartId = null) => {
   try {
-    if (!accessToken) return { success: false, status: 401, message: 'Access token is required' };
+    if (!accessToken) {
+      return { success: false, status: 401, message: 'Access token is required' };
+    }
 
     const decoded = verifyToken(accessToken);
     const userId = decoded.userId;
 
     let cart;
     if (cartId) {
-      cart = await Cart.findOne({ _id: cartId, userId }).populate('items.productId');
+      cart = await Cart.findOne({ _id: cartId, userId, isOrdered: false }).populate('items.productId');
     } else {
-      cart = await Cart.findOne({ userId }).populate('items.productId');
+      cart = await Cart.findOne({ userId, isOrdered: false }).populate('items.productId');
     }
 
     if (!cart || cart.items.length === 0) {
-      return { success: false, status: 400, message: 'Cart is empty' };
+      return { success: false, status: 400, message: 'Cart is empty or already ordered' };
     }
 
     const totalAmount = cart.items.reduce((sum, item) => {
@@ -419,6 +425,9 @@ const createOrder = async (accessToken, cartId = null) => {
       status: 'pending',
       totalAmount
     });
+
+    cart.isOrdered = true;
+    await cart.save();
 
     return {
       success: true,
@@ -522,6 +531,9 @@ const verifyGuestOrder = async ({ phoneNumber, otp, cartId, action }) => {
       totalAmount,
       status: 'pending',
     });
+
+    cart.isOrdered = true;
+    await cart.save();
 
     await Otp.deleteMany({ number: phoneNumber });
 

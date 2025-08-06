@@ -364,7 +364,7 @@ const requestOtp = async (req, res) => {
   try {
     const { phoneNumber } = req.body;
 
-    const result = await requestGuestOtp(phoneNumber);
+    const result = await storeServices.requestGuestOtp(phoneNumber);
 
     res.status(result.status).json(result);
   } catch (error) {
@@ -397,7 +397,7 @@ const verifyOrder = async (req, res) => {
   try {
     const { phoneNumber, otp, cartId, action } = req.body;
 
-    const result = await verifyGuestOrder({ phoneNumber, otp, cartId, action });
+    const result = await storeServices.verifyGuestOrder({ phoneNumber, otp, cartId, action });
 
     res.status(result.status).json(result);
   } catch (error) {
